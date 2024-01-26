@@ -1,0 +1,2 @@
+# remote_electron
+基于electron和golang模仿向日葵远控软件制作的远控软件,基于webrtc实现实时屏幕分享,基于golang实现键鼠控制
