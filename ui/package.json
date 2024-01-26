@@ -1,0 +1,36 @@
+{
+  "name": "remote",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite --mode=dev",
+    "build": "vite build --mode=pro && electron-builder --dir",
+    "preview": "vite preview"
+  },
+  "main": "./main/background.js",
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.4.0",
+    "core-js": "^3.6.5",
+    "element-plus": "^2.3.14",
+    "lodash": "^4.17.21",
+    "pinia": "^2.1.4",
+    "vue": "^3.2.47",
+    "vue-clipboard3": "^2.0.0",
+    "vue-router": "^4.2.2",
+    "vuex": "^4.1.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
+    "@vitejs/plugin-vue": "^4.1.0",
+    "electron": "^13.0.0",
+    "electron-builder": "^23.6.0",
+    "electron-devtools-installer": "^3.2.0",
+    "sass": "^1.26.5",
+    "sass-loader": "^8.0.2",
+    "unplugin-auto-import": "^0.16.6",
+    "unplugin-vue-components": "^0.25.1",
+    "vite": "^4.3.9",
+    "vite-plugin-electron": "^0.15.4"
+  }
+}

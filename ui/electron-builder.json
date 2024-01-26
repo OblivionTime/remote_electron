@@ -1,0 +1,36 @@
+{
+    "nsis": {
+        "allowToChangeInstallationDirectory": true,
+        "oneClick": false,
+        "installerIcon": "./src/assets/logo.png",
+        "installerHeaderIcon": "./src/assets/logo.png",
+        "guid": "xxxx",
+        "perMachine": true,
+        "allowElevation": true,
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true,
+        "shortcutName": "remote"
+    },
+    "files": ["./main","./dist"],
+    "compression": "maximum",
+    "asar": true,
+    "directories": {
+        "output": "build"
+    },
+    "electronDownload": {
+        "mirror": "https://npm.taobao.org/mirrors/electron/"
+    },
+    "win": {
+        "icon": "./src/assets/logo.png",
+        "target": [
+            {
+                "target": "portable",
+                "arch": [
+                    "x64"
+                ]
+            }
+        ]
+    },
+    "productName": "山与路远程控制",
+    "artifactName": "${productName}.${ext}"
+}

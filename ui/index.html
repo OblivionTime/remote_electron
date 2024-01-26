@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>demo</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0px;
+    }
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      border-radius: 10px;
+      -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+      opacity: 0.2;
+      background: fade(rgba(0, 0, 0, 0.4), 60%);
+    }
+
+    ::-webkit-scrollbar-track {
+      -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+      border-radius: 0;
+      background: fade(rgba(0, 0, 0, 0.4), 30%);
+    }
+
+    ::-webkit-input-placeholder {
+      font-size: 10px;
+    }
+    #app{
+      -webkit-app-region: drag;
+    }
+  </style>
+</body>
+
+</html>
