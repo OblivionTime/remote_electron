@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"remote/api/client"
@@ -28,7 +29,13 @@ type Remote struct {
 	HTTPS     bool   `json:"https"`
 }
 type RemoteServerResponse struct {
-	Operation string `json:"operation"`
+	Operation string      `json:"operation"`
+	Data      interface{} `json:"data"`
+}
+type WebRtcResponse struct {
+	Name   string      `json:"name"`
+	Data   interface{} `json:"data"`
+	Device string      `json:"device"`
 }
 
 // 建立客户端的websocket
@@ -43,6 +50,20 @@ func Connect(ctx *gin.Context) {
 		global.ClientConn = nil
 	}
 	global.ClientConn, _ = swebsocket.CreateConn(wsConn, 1)
+	global.ClientConn.Handle(func(msg []byte, conn *swebsocket.ServerConn) {
+		var res WebRtcResponse
+		json.Unmarshal(msg, &res)
+		if global.Remote_serverConn != nil {
+			global.Remote_serverConn.Send <- client.HandlerResult{
+				Op:          res.Name,
+				Data:        res.Data,
+				Device:      res.Device,
+				SendDevice:  global.DeviceInfo.IdentificationCode,
+				VideoSender: false,
+			}
+		}
+
+	})
 	global.ClientConn.WriteReadLoop()
 	global.ClientConn = nil
 }
@@ -110,7 +131,6 @@ func CheckDeviceOnline(ctx *gin.Context) {
 		return
 	}
 	remoteURL := fmt.Sprintf("%s/v1/api/remote/online?code=%s", global.RemoteServerIP, global.DeviceInfo.IdentificationCode)
-	fmt.Println(remoteURL)
 	client := shttp.NewClient()
 	err := client.POST(remoteURL, msg)
 	if err != nil {
@@ -158,4 +178,5 @@ func connectServer() {
 		global.ClientConn.Send <- RemoteServerResponse{Operation: "disconnect"}
 	}
 	global.DeviceInfo = &model.Device{}
+	global.Remote_serverConn = nil
 }

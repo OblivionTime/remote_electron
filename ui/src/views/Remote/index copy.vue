@@ -5,7 +5,7 @@
             @blur="release">
             <canvas id="action_area" ref="actionArea" @wheel="m_scroll" @mouseout="m_out" @mousedown="m_down"
                 @mouseup="m_up" @mousemove="updatePosition" @mouseenter="m_enter"></canvas>
-            <video id="other" ref="imgObj" autoplay></video>
+            <canvas id="other" ref="imgObj"></canvas>
         </div>
 
     </div>
@@ -18,7 +18,6 @@ import ToolBar from '@/components/ToolBar.vue';
 const remote = window.require("electron").remote;
 const win = remote.getCurrentWindow();
 const isShow = ref(false)
-
 const myfresh = () => {
     window.removeEventListener("blur", () => {
         release();
@@ -75,109 +74,30 @@ const video_resize = () => {
 const imgObj = ref(null);
 const actionArea = ref(null);
 const operateSocket = ref(null)
+let ctx = ref(null);
 let globalDeviceInfo = ref({
     device: "",
     code: ""
 })
-let PeerConnection =
-    window.PeerConnection ||
-    window.webkitPeerConnection00 ||
-    window.webkitRTCPeerConnection ||
-    window.mozRTCPeerConnection;
-let nativeRTCIceCandidate =
-    window.mozRTCIceCandidate || window.RTCIceCandidate;
-let nativeRTCSessionDescription =
-    window.mozRTCSessionDescription || window.RTCSessionDescription;
-//ice服务器地址
-const iceServer = {
-    iceServers: [
-        {
-            url: "turn:42.192.40.58:3478?transport=udp",
-            username: "ddssingsong",
-            credential: "123456",
-        },
-        {
-            url: "turn:42.192.40.58:3478?transport=tcp",
-            username: "ddssingsong",
-            credential: "123456",
-        },
-    ],
-};
-let PC = ref(null)
-//初始化PC源
-function initPC() {
-    let pc = new PeerConnection(iceServer);
-    pc.onicecandidate = (evt) => {
-        if (evt.candidate) {
-            operateSocket.value.send(
-                JSON.stringify({
-                    name: `ice_candidate`,
-                    data: {
-                        id: evt.candidate.sdpMid,
-                        label: evt.candidate.sdpMLineIndex,
-                        sdpMLineIndex: evt.candidate.sdpMLineIndex,
-                        candidate: evt.candidate.candidate,
-                    },
-                    device: globalDeviceInfo.device,
-                    videoSender: true
-                })
-            );
-        }
-    };
-    pc.onaddstream = (evt) => {
-
-        let stream = evt.stream
-        let video = document.getElementById('other')
-        video.srcObject = stream
-    };
-    return pc
-}
 const initVideoSocket = () => {
+    imgObj.value = document.getElementById("other");
+    ctx.value = imgObj.value.getContext("2d");
     video_resize();
     operateSocket.value = new WebSocket(
         `ws://${import.meta.env.VITE_API_URL}/v1/api/remote/server/video_connect?device=${globalDeviceInfo.device}&code=${globalDeviceInfo.code}`
         // `ws://${import.meta.env.VITE_API_URL}/v1/api/remote/server/video_connect?device=829065585&code=W9jtX3`
     );
-    operateSocket.value.onopen = () => {
-        //初始化PC源
-        PC.value = initPC()
-
-    }
-    operateSocket.value.onmessage = (msg) => {
-        let data = JSON.parse(msg.data)
-        switch (data.operation) {
-            case "offer":
-
-                //当收到对方接收请求后,设置音频源,并发送answer给对方
-                PC.value.setRemoteDescription(new nativeRTCSessionDescription(data.data.sdp));
-                PC.value.createAnswer((session_desc) => {
-                    PC.value.setLocalDescription(session_desc);
-                    operateSocket.value.send(
-                        JSON.stringify({
-                            name: "answer",
-                            data: {
-                                sdp: session_desc,
-                            },
-                            device: globalDeviceInfo.device,
-                            videoSender: true
-                        })
-                    )
-
-                }, (err) => {
-                    console.log(err);
-                })
-                break;
-            case "ice_candidate":
-                //添加ice源,这一步很重要,如果没有接收ice则查看是否流程有问题
-                var candidate = new nativeRTCIceCandidate(data.data);
-                PC.value.addIceCandidate(candidate);
-                break;
-        }
+    operateSocket.value.onmessage = (msgs) => {
+        try {
+            const blob = new Blob([msgs.data]);
+            let img = new Image();
+            const objectURL = URL.createObjectURL(blob);
+            img.src = objectURL;
+            img.onload = () => {
+                ctx.value.drawImage(img, 0, 0, attribute.value.width, attribute.value.height);
+            };
+        } catch (error) { }
     };
-    operateSocket.value.onerror = (err) => {
-        console.log(err);
-
-    }
 };
 
 
@@ -192,18 +112,6 @@ const initBlueToothSocket = () => {
     keyboardSocket.value.onmessage = (msgs) => {
         // console.log(msgs);
     };
-    keyboardSocket.value.onerror = (err) => {
-        console.log(err);
-
-        ElMessageBox.alert("连接失败", '警告', {
-            confirmButtonText: '确定',
-            showClose: false,
-            callback: () => {
-
-                router.push("/");
-            }
-        })
-    }
 };
 //释放鼠标
 const release = () => {
@@ -311,21 +219,16 @@ const m_scroll = (e) => {
     }
 };
 //#endregion -----------------------------------------------------------
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 const route = useRoute()
-const router = useRouter()
 onMounted(() => {
-    win.setSize(window.screen.availWidth, window.screen.availHeight);
-    win.setPosition(0, 0, 0)
-    window.addEventListener("resize", video_resize);
+    win.maximize()
     globalDeviceInfo.device = route.query?.device
     globalDeviceInfo.code = route.query?.code
     setTimeout(() => {
         initVideoSocket()
-        setTimeout(() => {
-            initBlueToothSocket()
-        }, 1000);
-    }, 500);
+        initBlueToothSocket()
+    }, 2000);
 
 })
 onUnmounted(() => {
@@ -345,7 +248,6 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 #myvideos {
-    // -webkit-app-region: drag;
     width: 100vw;
     height: 100vh;
     position: relative;
@@ -356,24 +258,21 @@ onUnmounted(() => {
 }
 
 #action_area {
-    -webkit-app-region: no-drag;
     position: absolute;
     user-select: none;
-    z-index: 919;
+    z-index: 99;
     border-radius: 5px;
 }
 
 #other {
-    -webkit-app-region: no-drag;
     border-radius: 5px;
     z-index: 98;
-    object-fit: fill;
 }
 
 .content {
     width: 100vw;
     height: 100vh;
     background: #303133;
-    -webkit-app-region: drag;
+    // -webkit-app-region: no-drag;
 }
 </style>

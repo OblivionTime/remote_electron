@@ -2,30 +2,55 @@ package client
 
 import (
 	"remote/global"
-	"remote/utils"
-
-	"gitee.com/solidone/sutils/swebsocket"
 )
 
 var ConnectDevice = make(map[interface{}]bool)
 
-func VideoHandler(device string, conn *swebsocket.ServerConn) {
-	var flag bool
-	ConnectDevice[device] = false
-	for {
-		flag = ConnectDevice[device]
-		if flag {
-			return
-		}
-		data := utils.GetScreenshots()
-		if data != nil {
-			conn.Send <- HandlerResult{
-				Op:         "video",
-				Device:     device,
-				SendDevice: global.DeviceInfo.IdentificationCode,
-				VideoData:  data,
+func VideoHandler(msg HandlerResult) {
+	switch msg.Op {
+	case "join":
+		//共享屏幕给连接的设备
+		if global.ClientConn != nil {
+			global.ClientConn.Send <- map[string]string{
+				"operation": "video",
+				"device":    msg.Device,
 			}
 		}
-	}
+	case "offer":
+		if global.VideoConn != nil {
+			global.VideoConn.Send <- map[string]interface{}{
+				"operation": "offer",
+				"data":      msg.Data,
+				"device":    msg.Device,
+			}
+		}
+	case "answer":
+		if global.ClientConn != nil {
+			global.ClientConn.Send <- map[string]interface{}{
+				"operation": "answer",
+				"data":      msg.Data,
+				"device":    msg.Device,
+			}
+		}
+	case "ice_candidate":
+		if !msg.VideoSender {
+			if global.VideoConn != nil {
+				global.VideoConn.Send <- map[string]interface{}{
+					"operation": "ice_candidate",
+					"data":      msg.Data,
+					"device":    msg.Device,
+				}
+			}
+		} else {
+			if global.ClientConn != nil {
+				global.ClientConn.Send <- map[string]interface{}{
+					"operation": "ice_candidate",
+					"data":      msg.Data,
+					"device":    msg.Device,
+				}
+			}
 
+		}
+
+	}
 }

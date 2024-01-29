@@ -12,12 +12,13 @@ import (
 )
 
 type HandlerResult struct {
-	Op           string `json:"op"` //操作
-	Device       string `json:"device,omitempty"`
-	Code         string `json:"code,omitempty"`
-	SendDevice   string `json:"send_device,omitempty"`
-	KeyboardData []byte `json:"keyboard_data,omitempty"`
-	VideoData    []byte `json:"videoData,omitempty"`
+	Op           string      `json:"op"` //操作
+	Device       string      `json:"device,omitempty"`
+	Code         string      `json:"code,omitempty"`
+	SendDevice   string      `json:"send_device,omitempty"`
+	KeyboardData []byte      `json:"keyboard_data,omitempty"`
+	Data         interface{} `json:"data,omitempty"`
+	VideoSender  bool        `json:"videoSender,omitempty"`
 }
 
 func HandlerData(res []byte, conn *swebsocket.ServerConn) {
@@ -43,6 +44,7 @@ func HandlerData(res []byte, conn *swebsocket.ServerConn) {
 				}
 				break
 			}
+			global.VideoRooms[msg.Device] = append(global.VideoRooms[msg.Device], msg.SendDevice)
 			global.DeviceList[msg.Device].Send <- HandlerResult{
 				Op:     "join",
 				Device: msg.SendDevice,

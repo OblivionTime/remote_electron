@@ -1,6 +1,6 @@
 <template>
     <div class="main">
-        <div class="toolNar_top" v-if="flag">
+        <div class="toolNar_top" v-show="flag">
             <el-tooltip content="展开" placement="bottom" effect="light" popper-class="popper">
                 <div class="down_btn" @click.stop="changeBtn">
                     <el-icon size="15">
@@ -9,17 +9,17 @@
                 </div>
             </el-tooltip>
         </div>
-        <div class="tool_list" @click.stop="" v-else>
+        <div class="tool_list" @click.stop=""  v-show="!flag">
             <div class="list_item" @click="refresh">
-                <div class="item_icon"><img src="@/assets/refresh.svg" alt="" /></div>
+                <div class="item_icon"><img :src="RefreshIcon" alt="" /></div>
                 <div class="text">刷新</div>
             </div>
             <div class="list_item" @click="minSize">
-                <div class="item_icon"><img src="@/assets/minSize.svg" alt="" /></div>
+                <div class="item_icon"><img :src="minSizeIcon" alt="" /></div>
                 <div class="text">最小化</div>
             </div>
             <div class="list_item" @click="close">
-                <div class="item_icon"><img src="@/assets/close.svg" alt="" /></div>
+                <div class="item_icon"><img :src="closeIcon" alt="" /></div>
                 <div class="text">退出</div>
             </div>
         </div>
@@ -30,7 +30,9 @@
 import { useRouter } from "vue-router";
 import { onMounted, ref } from "vue";
 import { ElMessageBox } from "element-plus";
-
+import RefreshIcon from "@/assets/refresh.svg"
+import minSizeIcon from "@/assets/minSize.svg"
+import closeIcon from "@/assets/close.svg"
 const router = useRouter();
 
 const props = defineProps({
@@ -43,7 +45,7 @@ const changeBtn = () => {
     flag.value = false;
 };
 
-const emit = defineEmits([ 'myfresh'])
+const emit = defineEmits(['myfresh'])
 
 
 const close = () => {
@@ -52,10 +54,13 @@ const close = () => {
         cancelButtonText: "取消",
     })
         .then(() => {
-            props.socket.send(JSON.stringify({
-                operation: "change",
-                status: false
-            }))
+            if (props.socket) {
+                props.socket.send(JSON.stringify({
+                    operation: "change",
+                    status: false
+                }))
+            }
+
             router.push("/");
         })
         .catch(() => { });
@@ -94,6 +99,7 @@ onUnmounted(() => {
     transform: translateX(-50%);
     z-index: 9999;
     cursor: pointer;
+
     .down_btn {
         padding: 0 0.7rem;
         background: #67686b;

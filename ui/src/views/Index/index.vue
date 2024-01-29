@@ -14,6 +14,8 @@
             </div>
             <div class="logo">
                 <img src="@/assets/logo.png" alt="">
+
+                <div>山与路远程控制</div>
             </div>
             <div class="online">
                 <div class="status" :class="deivce.online.status ? 'success' : 'error'"></div>
@@ -26,12 +28,12 @@
                     免责声明:本作品为开源项目,请勿用于商业用途
                 </div>
                 <div class="btns">
-                    <div class="semi">
+                    <div class="semi" @click="minSize">
                         <el-icon style="font-size: 25px;">
                             <Minus />
                         </el-icon>
                     </div>
-                    <div class="close">
+                    <div class="close" @click="closeWindow">
                         <el-icon style="font-size: 25px;">
                             <Close />
                         </el-icon>
@@ -76,8 +78,17 @@ const deivce = useDeviceStore();
 const active = ref("connect")
 const remote = window.require("electron").remote;
 const win = remote.getCurrentWindow();
+//最小化
+const minSize = () => {
+    win.minimize()
+}
+const closeWindow = () => {
+    win.close()
+}
 onMounted(() => {
     win.restore()
+    win.setSize(750, 510)
+    win.center()
 })
 </script>
 
@@ -87,6 +98,7 @@ onMounted(() => {
     box-sizing: border-box;
     display: flex;
     position: relative;
+    -webkit-app-region: drag;
 
     .main-left {
         flex-basis: 200px;
@@ -137,11 +149,17 @@ onMounted(() => {
 
         .logo {
             position: absolute;
-            bottom: 30px;
+            bottom: 80px;
             -webkit-app-region: no-drag;
+            display: flex;
+            align-items: center;
+            font-size: 17px;
+            margin-left: 10px;
+            font-weight: bold;
+            gap: 10px;
 
             img {
-                width: 180px;
+                width: 40px;
             }
         }
 
@@ -192,6 +210,7 @@ onMounted(() => {
 
             .btns {
                 display: flex;
+                -webkit-app-region: no-drag;
 
                 .semi {
                     cursor: pointer;
@@ -225,4 +244,5 @@ onMounted(() => {
         }
     }
 
-}</style>
+}
+</style>

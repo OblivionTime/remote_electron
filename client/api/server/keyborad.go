@@ -63,7 +63,9 @@ func ConnectKeyboard(ctx *gin.Context) {
 		}()
 		var data SendData
 		for {
-			if (global.Remote_serverConn != nil && global.Remote_serverConn.Flag) || global.KeyboardConn.Flag {
+			if global.KeyboardConn == nil || global.Remote_serverConn == nil {
+				return
+			} else if (global.Remote_serverConn != nil && global.Remote_serverConn.Flag) || (global.KeyboardConn != nil && global.KeyboardConn.Flag) {
 				return
 			}
 			select {

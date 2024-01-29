@@ -1,13 +1,24 @@
 "use strict";
-const { app, BrowserWindow } = require("electron");
+require("console");
+const {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  nativeImage,
+  globalShortcut
+} = require("electron");
 const { join } = require("path");
 require("url");
 process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 const createWindow = () => {
+  const icon = nativeImage.createFromPath(join(__dirname, "logo.png"));
+  console.log(__dirname);
   const win = new BrowserWindow({
     frame: false,
     width: 750,
     useContentSize: true,
+    icon,
     height: 510,
     minWidth: 750,
     minHeight: 510,
@@ -20,11 +31,24 @@ const createWindow = () => {
       contextIsolation: false
     }
   });
-  win.setMaximizable(false);
+  tray = new Tray(icon);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: "主界面", click: () => win.show() },
+    { label: "退出", click: () => app.exit() }
+  ]);
+  tray.on("double-click", () => {
+    win.show();
+  });
+  tray.setToolTip("山与路远程控制");
+  tray.setContextMenu(contextMenu);
+  win.on("close", (event) => {
+    win.hide();
+    win.setSkipTaskbar(true);
+    event.preventDefault();
+  });
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    win.setMenu(null);
     win.loadFile(join(__dirname, "../dist/index.html"));
   }
 };

@@ -18,4 +18,5 @@ var (
 	}
 	DB         *gorm.DB
 	DeviceList = make(map[string]*swebsocket.ServerConn)
+	VideoRooms = make(map[string][]string, 0)
 )

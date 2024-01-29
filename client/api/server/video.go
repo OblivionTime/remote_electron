@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"remote/api/client"
 	"remote/global"
 
@@ -10,7 +11,15 @@ import (
 )
 
 func HandlerVideo(msg []byte, conn *swebsocket.ServerConn) {
-	conn.Send <- msg
+	var res WebRtcResponse
+	json.Unmarshal(msg, &res)
+	global.Remote_serverConn.Send <- client.HandlerResult{
+		Op:          res.Name,
+		Data:        res.Data,
+		Device:      res.Device,
+		SendDevice:  global.DeviceInfo.IdentificationCode,
+		VideoSender: true,
+	}
 }
 
 // 建立音视频的websocket
@@ -29,12 +38,13 @@ func ConnectVideo(ctx *gin.Context) {
 		global.VideoConn.CloseConn()
 		global.VideoConn = nil
 	}
-	global.VideoConn, _ = swebsocket.CreateConn(wsConn, 2)
+	global.VideoConn, _ = swebsocket.CreateConn(wsConn, 1)
 	global.Remote_serverConn.Send <- client.HandlerResult{
-		Op:         "join",
-		Device:     DeviceID,
-		Code:       code,
-		SendDevice: global.DeviceInfo.IdentificationCode,
+		Op:          "join",
+		Device:      DeviceID,
+		Code:        code,
+		SendDevice:  global.DeviceInfo.IdentificationCode,
+		VideoSender: true,
 	}
 	global.VideoConn.Handle(HandlerVideo)
 	global.VideoConn.WriteReadLoop()
