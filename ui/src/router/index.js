@@ -11,6 +11,11 @@ const router = createRouter({
       name: "remote",
       component: () => import("@/views/Remote/index.vue"),
     },
+    {
+      path: "/controlledEnd",
+      name: "controlledEnd",
+      component: () => import("@/views/controlledEnd/index.vue"),
+    },
   ],
 });
 

@@ -54,6 +54,7 @@ func setupRouter(router *gin.Engine) {
 			// serverRouter.GET("/bluetooth", api.Bluetooth)
 			// serverRouter.GET("/video_ws", api.Video)
 			serverRouter.GET("/connect", api.Connect)
+			serverRouter.GET("/device_list", api.ConnectedList)
 			serverRouter.GET("/video_connect", api.ConnectVideo)
 			serverRouter.GET("/keyboard_connect", api.ConnectKeyboard)
 			serverRouter.POST("/connect_server", api.ConnectServer)

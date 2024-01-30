@@ -1,6 +1,6 @@
 <template>
     <div class="content">
-        <ToolBar v-if="isShow" @myfresh="myfresh" :socket="keyboardSocket"></ToolBar>
+        <ToolBar v-if="isShow" @myfresh="myfresh" @closeConnect="closeConnect"></ToolBar>
         <div class="myvideos" id="myvideos" ref="parent" :style="isShow ? '' : 'opacity:0;visibility:hidden'"
             @blur="release">
             <canvas id="action_area" ref="actionArea" @wheel="m_scroll" @mouseout="m_out" @mousedown="m_down"
@@ -15,6 +15,7 @@
 <script setup>
 import Loading from '@/components/Loading.vue';
 import ToolBar from '@/components/ToolBar.vue';
+import { ElMessageBox } from "element-plus";
 const remote = window.require("electron").remote;
 const win = remote.getCurrentWindow();
 const isShow = ref(false)
@@ -172,14 +173,52 @@ const initVideoSocket = () => {
                 var candidate = new nativeRTCIceCandidate(data.data);
                 PC.value.addIceCandidate(candidate);
                 break;
+            case "disconnected":
+                ElMessageBox.alert('对方断开连接', '连接断开', {
+                    confirmButtonText: '确定',
+                    showClose: false,
+                    callback: () => {
+                        release();
+                        router.push("/");
+                    },
+
+                })
+                break
         }
     };
     operateSocket.value.onerror = (err) => {
         console.log(err);
+        if (operateSocket.value) {
+            operateSocket.value = null
+        }
 
     }
+    operateSocket.value.onclose = () => {
+        if (operateSocket.value) {
+            operateSocket.value = null
+        }
+    }
 };
+//断开连接
+const closeConnect = () => {
+    ElMessageBox.confirm("确认退出吗?", "提示", {
+        confirmButtonText: "确认",
+        cancelButtonText: "取消",
+    })
+        .then(() => {
+            release()
+            if (operateSocket.value) {
+                operateSocket.value.send(JSON.stringify({
+                    "name": "disconnected",
+                    device: globalDeviceInfo.device,
+                    videoSender: true
+                }))
+            }
 
+            router.push("/");
+        })
+        .catch(() => { });
+}
 
 //#endregion -----------------------------------------------------------
 //#region  ------------------------------------------------------------

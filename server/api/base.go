@@ -12,7 +12,6 @@ import (
 )
 
 type ConnectDevice struct {
-	DeviceID           string `json:"device_id" `
 	IdentificationCode string `json:"identificationCode" `
 	VerificationCode   string `json:"verificationCode"`
 }
@@ -84,8 +83,21 @@ func DeviceOnlineStatus(ctx *gin.Context) {
 			VerificationCode:   msg.VerificationCode,
 		})
 		cs, _ := json.Marshal(connections)
-		global.DB.Model(model.Device{}).Where("device_id = ?", DeviceID).UpdateColumn("connectioned", string(cs))
+		fmt.Println(connections)
+		global.DB.Model(model.Device{}).Where("identificationCode = ?", DeviceID).UpdateColumn("connectioned", string(cs))
 	}
 	response.Ok(ctx)
+}
 
+// 获取连接过的设备列表
+func GetConnectDeviceList(ctx *gin.Context) {
+	DeviceID := ctx.Query("device")
+	if DeviceID == "" {
+		response.FailWithMessage("未获取到设备信息", ctx)
+		return
+	}
+	var deviceInfo model.Device
+	global.DB.Model(model.Device{}).Where("identificationCode = ?", DeviceID).First(&deviceInfo)
+
+	response.OkWithData(deviceInfo.Connectioned, ctx)
 }

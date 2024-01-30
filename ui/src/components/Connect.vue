@@ -47,8 +47,8 @@ const device = useDeviceStore();
 const router = useRouter()
 import { ConnectRemoteDevice } from '@/api/info.js';
 const formData = ref({
-    identificationCode: "829065585",
-    verificationCode: "W9jtX3"
+    identificationCode: "",
+    verificationCode: ""
 })
 const Connect = () => {
     if (formData.value.identificationCode?.length != 9 || formData.value.verificationCode?.length != 6) {

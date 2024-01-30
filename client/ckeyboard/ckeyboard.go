@@ -13,6 +13,7 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 void ListenKeyboard();
 void UnhookKeyboard();
+
 */
 import "C"
 

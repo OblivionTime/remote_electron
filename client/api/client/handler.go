@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"remote/global"
 
 	"gitee.com/solidone/sutils/swebsocket"
 )
@@ -25,7 +26,21 @@ func RemoteDataHandler(res []byte, conn *swebsocket.ServerConn) {
 	case "join", "offer", "answer", "ice_candidate":
 		VideoHandler(msg)
 	case "disconnected":
-		ConnectDevice[msg.SendDevice] = true
+		if !msg.VideoSender {
+			if global.VideoConn != nil {
+				global.VideoConn.Send <- map[string]interface{}{
+					"operation": "disconnected",
+					"device":    msg.Device,
+				}
+			}
+		} else {
+			if global.ClientConn != nil {
+				global.ClientConn.Send <- map[string]interface{}{
+					"operation": "video_disconnected",
+					"device":    msg.Device,
+				}
+			}
+		}
 	case "keyboard":
 		HandlerKeyboard(msg.KeyboardData)
 	default:

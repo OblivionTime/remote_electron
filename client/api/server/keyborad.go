@@ -33,10 +33,6 @@ type SendData struct {
 	Height float64 `json:"height,omitempty"`
 }
 
-func HandlerKeyboard(msg []byte, conn *swebsocket.ServerConn) {
-
-}
-
 // 建立键盘的websocket
 func ConnectKeyboard(ctx *gin.Context) {
 	DeviceID := ctx.Query("device")

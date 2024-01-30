@@ -15,3 +15,11 @@ export function ConnectRemoteDevice(data) {
         data
     })
 }
+//连接目标机
+export function GetConnectDevice() {
+    return request({
+        url: '/device_list',
+        method: 'get',
+        
+    })
+}

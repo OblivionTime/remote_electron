@@ -65,6 +65,7 @@ func Connect(ctx *gin.Context) {
 
 	})
 	global.ClientConn.WriteReadLoop()
+	fmt.Println("连接结束")
 	global.ClientConn = nil
 }
 
@@ -117,6 +118,37 @@ type Device struct {
 	IdentificationCode string `json:"identificationCode" `
 	VerificationCode   string `json:"verificationCode"`
 	Connectioned       string `json:"connectioned,omitempty" ` //连接过的设备
+}
+type ConnectDevice struct {
+	IdentificationCode string `json:"identificationCode" `
+	VerificationCode   string `json:"verificationCode"`
+}
+
+// 获取设备列表
+func ConnectedList(ctx *gin.Context) {
+	remoteURL := fmt.Sprintf("%s/v1/api/remote/device_list?device=%s", global.RemoteServerIP, global.DeviceInfo.IdentificationCode)
+	client := shttp.NewClient()
+	err := client.GET(remoteURL, nil)
+	if err != nil {
+		fmt.Println(err)
+		response.FailWithMessage("服务器连接失败", ctx)
+		return
+	}
+	var res DeviceResponse
+	err = client.GetResponseData(&res)
+	if err != nil {
+		fmt.Println(err)
+		response.FailWithMessage("服务器连接失败", ctx)
+		return
+	}
+	if res.Code != 0 {
+		response.FailWithMessage(res.Msg, ctx)
+		return
+	}
+	var connectioned string
+	utils.Decrypt(res.Data, &connectioned)
+	response.OkWithData(connectioned, ctx)
+
 }
 
 // 远程控制

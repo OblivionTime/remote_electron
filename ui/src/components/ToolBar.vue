@@ -9,7 +9,7 @@
                 </div>
             </el-tooltip>
         </div>
-        <div class="tool_list" @click.stop=""  v-show="!flag">
+        <div class="tool_list" @click.stop="" v-show="!flag">
             <div class="list_item" @click="refresh">
                 <div class="item_icon"><img :src="RefreshIcon" alt="" /></div>
                 <div class="text">刷新</div>
@@ -45,25 +45,11 @@ const changeBtn = () => {
     flag.value = false;
 };
 
-const emit = defineEmits(['myfresh'])
+const emit = defineEmits(['myfresh', "closeConnect"])
 
 
 const close = () => {
-    ElMessageBox.confirm("确认退出吗?", "提示", {
-        confirmButtonText: "确认",
-        cancelButtonText: "取消",
-    })
-        .then(() => {
-            if (props.socket) {
-                props.socket.send(JSON.stringify({
-                    operation: "change",
-                    status: false
-                }))
-            }
-
-            router.push("/");
-        })
-        .catch(() => { });
+    emit("closeConnect")
 };
 //最小化
 const minSize = () => {

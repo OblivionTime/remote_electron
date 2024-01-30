@@ -11,7 +11,10 @@
         "createStartMenuShortcut": true,
         "shortcutName": "remote"
     },
-    "files": ["./main","./dist"],
+    "files": [
+        "./main",
+        "./dist"
+    ],
     "compression": "maximum",
     "asar": true,
     "directories": {
@@ -28,6 +31,12 @@
                 "arch": [
                     "x64"
                 ]
+            }
+        ],
+        "extraFiles": [
+            {
+                "from": "remote.exe",
+                "to": "remote.exe"
             }
         ]
     },
