@@ -1,0 +1,6 @@
+serveraddr: ":9998"
+turn:
+  public_ip: "127.0.0.1"
+  port: 3478
+  thread_num: 5
+db_path: "./remote.db"

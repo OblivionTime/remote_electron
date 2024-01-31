@@ -1,2 +1,4 @@
 remote_test
 *.exe
+build/
+*.zip

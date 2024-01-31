@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"remote_server/config"
 	"remote_server/global"
 	"remote_server/model"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type ICEServer struct {
+	URL        string `json:"url"`
+	Credential string `json:"credential"`
+	Username   string `json:"username"`
+}
 type HandlerResult struct {
 	Op           string      `json:"op"` //操作
 	Device       string      `json:"device,omitempty"`
@@ -19,6 +25,7 @@ type HandlerResult struct {
 	KeyboardData []byte      `json:"keyboard_data,omitempty"`
 	Data         interface{} `json:"data,omitempty"`
 	VideoSender  bool        `json:"videoSender,omitempty"`
+	ICEServers   []ICEServer `json:"iceservers,omitempty"`
 }
 
 func HandlerData(res []byte, conn *swebsocket.ServerConn) {
@@ -45,11 +52,39 @@ func HandlerData(res []byte, conn *swebsocket.ServerConn) {
 				break
 			}
 			global.VideoRooms[msg.Device] = append(global.VideoRooms[msg.Device], msg.SendDevice)
-			global.DeviceList[msg.Device].Send <- HandlerResult{
-				Op:     "join",
-				Device: msg.SendDevice,
+			Username, Credential := global.Turnserver.Credentials(msg.SendDevice)
+			iceClient := []ICEServer{{
+				URL:        fmt.Sprintf("turn:%v:%d?transport=udp", config.Config.Turn.PublicIP, config.Config.Turn.Port),
+				Credential: Credential,
+				Username:   Username,
+			}, {
+				URL:        fmt.Sprintf("turn:%v:%d?transport=tcp", config.Config.Turn.PublicIP, config.Config.Turn.Port),
+				Credential: Credential,
+				Username:   Username,
+			}}
+			fmt.Printf("iceClient ,%+v\n", iceClient)
+			global.DeviceList[msg.SendDevice].Send <- HandlerResult{
+				Op:         "ice_server",
+				ICEServers: iceClient,
 			}
+			global.DeviceList[msg.Device].Send <- HandlerResult{
+				Op:         "join",
+				Device:     msg.SendDevice,
+				ICEServers: iceClient,
+			}
+
 		}
+	case "disconnected":
+		global.Turnserver.Disallow(msg.SendDevice)
+		global.Turnserver.Disallow(msg.Device)
+		if _, ok := global.DeviceList[msg.Device]; !ok {
+			global.DeviceList[msg.SendDevice].Send <- HandlerResult{
+				Op:     "disconnected",
+				Device: msg.Device,
+			}
+			break
+		}
+		global.DeviceList[msg.Device].Send <- msg
 	default:
 		if _, ok := global.DeviceList[msg.Device]; !ok {
 			global.DeviceList[msg.SendDevice].Send <- HandlerResult{

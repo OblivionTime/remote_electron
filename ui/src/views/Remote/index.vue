@@ -90,19 +90,8 @@ let nativeRTCIceCandidate =
 let nativeRTCSessionDescription =
     window.mozRTCSessionDescription || window.RTCSessionDescription;
 //ice服务器地址
-const iceServer = {
-    iceServers: [
-        {
-            url: "turn:42.192.40.58:3478?transport=udp",
-            username: "ddssingsong",
-            credential: "123456",
-        },
-        {
-            url: "turn:42.192.40.58:3478?transport=tcp",
-            username: "ddssingsong",
-            credential: "123456",
-        },
-    ],
+let iceServer = {
+    iceServers: [],
 };
 let PC = ref(null)
 //初始化PC源
@@ -139,14 +128,14 @@ const initVideoSocket = () => {
         `ws://${import.meta.env.VITE_API_URL}/v1/api/remote/server/video_connect?device=${globalDeviceInfo.device}&code=${globalDeviceInfo.code}`
         // `ws://${import.meta.env.VITE_API_URL}/v1/api/remote/server/video_connect?device=829065585&code=W9jtX3`
     );
-    operateSocket.value.onopen = () => {
-        //初始化PC源
-        PC.value = initPC()
-
-    }
     operateSocket.value.onmessage = (msg) => {
         let data = JSON.parse(msg.data)
         switch (data.operation) {
+            case "ice_server":
+                iceServer.iceServers = data.iceservers
+                PC.value = initPC()
+                console.log(iceServer);
+                break
             case "offer":
 
                 //当收到对方接收请求后,设置音频源,并发送answer给对方

@@ -17,18 +17,7 @@ let nativeRTCSessionDescription =
     window.mozRTCSessionDescription || window.RTCSessionDescription;
 //ice服务器地址
 const iceServer = {
-    iceServers: [
-        {
-            url: "turn:42.192.40.58:3478?transport=udp",
-            username: "ddssingsong",
-            credential: "123456",
-        },
-        {
-            url: "turn:42.192.40.58:3478?transport=tcp",
-            username: "ddssingsong",
-            credential: "123456",
-        },
-    ],
+    iceServers: []
 };
 //初始化PC源
 function initPC(deviceID) {
@@ -143,6 +132,7 @@ onMounted(() => {
                                         selfPC.close()
                                         selfPC = null
                                     }
+                                    iceServer.iceServers = data.iceservers
                                     handlerVideo(data.device)
                                 case "answer":
                                     if (selfPC) {

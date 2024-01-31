@@ -11,9 +11,18 @@ func VideoHandler(msg HandlerResult) {
 	case "join":
 		//共享屏幕给连接的设备
 		if global.ClientConn != nil {
-			global.ClientConn.Send <- map[string]string{
-				"operation": "video",
-				"device":    msg.Device,
+			global.ClientConn.Send <- map[string]interface{}{
+				"operation":  "video",
+				"device":     msg.Device,
+				"iceservers": msg.ICEServers,
+			}
+		}
+	case "ice_server":
+		if global.VideoConn != nil {
+			global.VideoConn.Send <- map[string]interface{}{
+				"operation":  "ice_server",
+				"iceservers": msg.ICEServers,
+				"device":     msg.Device,
 			}
 		}
 	case "offer":

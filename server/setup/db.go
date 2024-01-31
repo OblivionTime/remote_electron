@@ -2,6 +2,7 @@ package setup
 
 import (
 	"fmt"
+	"remote_server/config"
 	"remote_server/model"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 func GormSqlite() *gorm.DB {
 	fmt.Println("init sqlite3")
 	var err error
-	DB, err := gorm.Open("sqlite", "./db.db")
+	DB, err := gorm.Open("sqlite", config.Config.DBPath)
 	if err != nil {
 		panic(err)
 	}

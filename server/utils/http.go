@@ -1,47 +1,18 @@
 package utils
 
 import (
-	"bytes"
-	"crypto/tls"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"net"
+	"strings"
 )
 
-var tr = &http.Transport{
-	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	MaxConnsPerHost: 8,
-}
-
-// 请求Client
-var client = &http.Client{
-	Transport: tr,
-	Timeout:   15 * time.Second, // 设置超时时间为 30 秒
-
-}
-
-// 发送请求
-func SendMessageServer(RemoteURL string, data []byte) ([]byte, error) {
-	var req *http.Request
-	var err error
-	if data == nil {
-		req, err = http.NewRequest("GET", RemoteURL, nil)
-	} else {
-		req, err = http.NewRequest("POST", RemoteURL, bytes.NewBuffer(data))
-	}
+func GetHostIp() string {
+	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err != nil {
-		fmt.Println("http.GET error: ", err.Error())
-		return nil, err
+		fmt.Println("get current host ip err: ", err)
+		return ""
 	}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("http.GET error: ", err.Error())
-		return nil, err
-	}
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	body, _ := io.ReadAll(resp.Body)
-	return body, nil
+	addr := conn.LocalAddr().(*net.UDPAddr)
+	ip := strings.Split(addr.String(), ":")[0]
+	return ip
 }

@@ -2,6 +2,7 @@ package global
 
 import (
 	"net/http"
+	"remote_server/model"
 
 	"gitee.com/solidone/sutils/swebsocket"
 	"github.com/gorilla/websocket"
@@ -19,4 +20,5 @@ var (
 	DB         *gorm.DB
 	DeviceList = make(map[string]*swebsocket.ServerConn)
 	VideoRooms = make(map[string][]string, 0)
+	Turnserver *model.TurnServer
 )

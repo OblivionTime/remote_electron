@@ -8,6 +8,11 @@ import (
 	"gitee.com/solidone/sutils/swebsocket"
 )
 
+type ICEServer struct {
+	URL        string `json:"url"`
+	Credential string `json:"credential"`
+	Username   string `json:"username"`
+}
 type HandlerResult struct {
 	Op           string      `json:"op"` //操作
 	Device       string      `json:"device,omitempty"`
@@ -16,6 +21,7 @@ type HandlerResult struct {
 	KeyboardData []byte      `json:"keyboard_data,omitempty"`
 	Data         interface{} `json:"data,omitempty"`
 	VideoSender  bool        `json:"videoSender,omitempty"`
+	ICEServers   []ICEServer `json:"iceservers,omitempty"`
 }
 
 // 数据处理
@@ -23,7 +29,7 @@ func RemoteDataHandler(res []byte, conn *swebsocket.ServerConn) {
 	var msg HandlerResult
 	json.Unmarshal(res, &msg)
 	switch msg.Op {
-	case "join", "offer", "answer", "ice_candidate":
+	case "join", "offer", "answer", "ice_candidate", "ice_server":
 		VideoHandler(msg)
 	case "disconnected":
 		if !msg.VideoSender {
