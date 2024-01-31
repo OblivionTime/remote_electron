@@ -194,6 +194,8 @@ func connectServer() {
 	if err != nil {
 		if global.ClientConn != nil {
 			global.ClientConn.Send <- RemoteServerResponse{Operation: "disconnect"}
+			global.ClientConn.CloseConn()
+			global.ClientConn = nil
 		}
 		return
 	}
@@ -201,14 +203,14 @@ func connectServer() {
 	if err != nil {
 		if global.ClientConn != nil {
 			global.ClientConn.Send <- RemoteServerResponse{Operation: "disconnect"}
+			global.ClientConn.CloseConn()
+			global.ClientConn = nil
 		}
 		return
 	}
 	global.Remote_serverConn.Handle(client.RemoteDataHandler)
 	global.Remote_serverConn.WriteReadLoop()
-	if global.ClientConn != nil {
-		global.ClientConn.Send <- RemoteServerResponse{Operation: "disconnect"}
-	}
+	utils.CloseAllConnect()
 	global.DeviceInfo = &model.Device{}
 	global.Remote_serverConn = nil
 }

@@ -2,6 +2,7 @@ package client
 
 import (
 	"remote/global"
+	"remote/utils"
 )
 
 var ConnectDevice = make(map[interface{}]bool)
@@ -16,6 +17,7 @@ func VideoHandler(msg HandlerResult) {
 				"device":     msg.Device,
 				"iceservers": msg.ICEServers,
 			}
+			utils.InitReceiveKeyboardP2P(msg.ICEServers, msg.Device)
 		}
 	case "ice_server":
 		if global.VideoConn != nil {
@@ -24,6 +26,8 @@ func VideoHandler(msg HandlerResult) {
 				"iceservers": msg.ICEServers,
 				"device":     msg.Device,
 			}
+			//初始化键盘
+			utils.InitSenderKeyboardP2P(msg.ICEServers, msg.Device)
 		}
 	case "offer":
 		if global.VideoConn != nil {

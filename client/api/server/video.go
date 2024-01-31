@@ -13,13 +13,16 @@ import (
 func HandlerVideo(msg []byte, conn *swebsocket.ServerConn) {
 	var res WebRtcResponse
 	json.Unmarshal(msg, &res)
-	global.Remote_serverConn.Send <- client.HandlerResult{
-		Op:          res.Name,
-		Data:        res.Data,
-		Device:      res.Device,
-		SendDevice:  global.DeviceInfo.IdentificationCode,
-		VideoSender: true,
+	if global.Remote_serverConn != nil {
+		global.Remote_serverConn.Send <- client.HandlerResult{
+			Op:          res.Name,
+			Data:        res.Data,
+			Device:      res.Device,
+			SendDevice:  global.DeviceInfo.IdentificationCode,
+			VideoSender: true,
+		}
 	}
+
 }
 
 // 建立音视频的websocket

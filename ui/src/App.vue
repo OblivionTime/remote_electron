@@ -39,7 +39,24 @@ function initPC(deviceID) {
             );
         }
     };
+    pc.oniceconnectionstatechange = (evt) => {
+        setTimeout(() => {
+            let connectionState = evt.target.connectionState
+            if (connectionState == "failed" || connectionState == "disconnected" || connectionState == "closed") {
+                ElMessageBox.alert('对方断开连接', '连接断开', {
+                    confirmButtonText: '确定',
+                    showClose: false,
+                    callback: () => {
+                        ipcRenderer.send("closeFloating")
+                        selfPC.close()
+                        selfPC = null
+                    },
 
+                })
+            }
+        }, 1000);
+
+    }
     return pc
 }
 var selfPC = null
@@ -155,7 +172,6 @@ onMounted(() => {
                                     selfPC = null
                                     break
                                 case "disconnected":
-
                                     device.deviceInfo = {
                                         device_id: "",
                                         identificationCode: "",
@@ -166,16 +182,43 @@ onMounted(() => {
                                         status: false,
                                         message: "服务器断开连接",
                                     }
+                                    ElMessageBox.alert('服务器断开连接', '连接断开', {
+                                        confirmButtonText: '确定',
+                                        showClose: false,
+                                        callback: () => {
+                                            router.push("/");
+                                        },
+                                    })
                                     break
                             }
                         }
                         socket.onclose = (err) => {
                             ipcRenderer.send("closeFloating")
                             console.log(err);
+                            device.deviceInfo = {
+                                device_id: "",
+                                identificationCode: "",
+                                verificationCode: "",
+                                connectioned: [],
+                            }
+                            device.online = {
+                                status: false,
+                                message: "服务器断开连接",
+                            }
                         }
                         socket.onerror = (err) => {
                             ipcRenderer.send("closeFloating")
                             console.log(err);
+                            device.deviceInfo = {
+                                device_id: "",
+                                identificationCode: "",
+                                verificationCode: "",
+                                connectioned: [],
+                            }
+                            device.online = {
+                                status: false,
+                                message: "服务器断开连接",
+                            }
                         }
                     } else {
                         device.deviceInfo = {

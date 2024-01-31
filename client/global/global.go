@@ -3,14 +3,17 @@ package global
 import (
 	"net/http"
 	"remote/model"
+	"sync"
 
 	"gitee.com/solidone/sutils/swebsocket"
 	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v4"
 )
 
 var (
-	OpenWatch bool                = false
-	Upgrader  *websocket.Upgrader = &websocket.Upgrader{
+	OpenWatch bool = false
+
+	Upgrader *websocket.Upgrader = &websocket.Upgrader{
 		ReadBufferSize:  2 * 1024,
 		WriteBufferSize: 2 * 1024,
 		// Allow connections from any Origin
@@ -24,6 +27,10 @@ var (
 	VideoConn         *swebsocket.ServerConn
 	KeyboardConn      *swebsocket.ServerConn
 	Remote_serverConn *swebsocket.ServerConn
+	//键盘相关点对点操作
+	KeyboardP2PConn *webrtc.PeerConnection
+	KeyboardHandler *webrtc.DataChannel
+	CandidatesMux   sync.Mutex
 )
 
 var KeyboardMap = map[uint32]string{

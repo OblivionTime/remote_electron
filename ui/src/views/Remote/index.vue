@@ -26,6 +26,7 @@ const myfresh = () => {
     });
     if (operateSocket.value) {
         operateSocket.value.close();
+        serverClose = false
         operateSocket.value = null;
     }
     if (keyboardSocket.value) {
@@ -114,6 +115,23 @@ function initPC() {
             );
         }
     };
+    pc.oniceconnectionstatechange = (evt) => {
+        setTimeout(() => {
+            let connectionState = evt.target.connectionState
+            if (connectionState == "failed" || connectionState == "disconnected" || connectionState == "closed") {
+                ElMessageBox.alert('对方断开连接', '连接断开', {
+                    confirmButtonText: '确定',
+                    showClose: false,
+                    callback: () => {
+                        release();
+                        router.push("/");
+                    },
+
+                })
+            }
+        }, 1000);
+
+    }
     pc.onaddstream = (evt) => {
 
         let stream = evt.stream
@@ -176,6 +194,7 @@ const initVideoSocket = () => {
         }
     };
     operateSocket.value.onerror = (err) => {
+
         console.log(err);
         if (operateSocket.value) {
             operateSocket.value = null
@@ -212,6 +231,7 @@ const closeConnect = () => {
 //#endregion -----------------------------------------------------------
 //#region  ------------------------------------------------------------
 let keyboardSocket = ref("");
+var serverClose = true
 //模式 键盘初始化连接
 const initBlueToothSocket = () => {
     keyboardSocket.value = new WebSocket(
@@ -223,14 +243,27 @@ const initBlueToothSocket = () => {
     keyboardSocket.value.onerror = (err) => {
         console.log(err);
 
-        ElMessageBox.alert("连接失败", '警告', {
-            confirmButtonText: '确定',
-            showClose: false,
-            callback: () => {
 
-                router.push("/");
-            }
-        })
+    }
+    operateSocket.value.onclose = () => {
+        if (operateSocket.value) {
+            operateSocket.value = null
+        }
+        if (PC.value) {
+            PC.value.close()
+            PC.value = null
+        }
+        if (serverClose) {
+            ElMessageBox.alert("服务器断开!!", '警告', {
+                confirmButtonText: '确定',
+                showClose: false,
+                callback: () => {
+
+                    router.push("/");
+                }
+            })
+        }
+
     }
 };
 //释放鼠标
@@ -362,12 +395,18 @@ onUnmounted(() => {
     });
     if (operateSocket.value) {
         operateSocket.value.close();
+        serverClose = false
         operateSocket.value = null;
     }
     if (keyboardSocket.value) {
         keyboardSocket.value.close()
         keyboardSocket.value = null
     }
+    if (PC.value) {
+        PC.value.close()
+        PC.value = null
+    }
+
 })
 </script>
 

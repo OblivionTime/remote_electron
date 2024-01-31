@@ -4,24 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"remote/global"
+	"remote/model"
 
 	"gitee.com/solidone/sutils/swebsocket"
+	"github.com/pion/webrtc/v4"
 )
 
-type ICEServer struct {
-	URL        string `json:"url"`
-	Credential string `json:"credential"`
-	Username   string `json:"username"`
-}
 type HandlerResult struct {
-	Op           string      `json:"op"` //操作
-	Device       string      `json:"device,omitempty"`
-	Code         string      `json:"code,omitempty"`
-	SendDevice   string      `json:"send_device,omitempty"`
-	KeyboardData []byte      `json:"keyboard_data,omitempty"`
-	Data         interface{} `json:"data,omitempty"`
-	VideoSender  bool        `json:"videoSender,omitempty"`
-	ICEServers   []ICEServer `json:"iceservers,omitempty"`
+	Op          string            `json:"op"` //操作
+	Device      string            `json:"device,omitempty"`
+	Code        string            `json:"code,omitempty"`
+	SendDevice  string            `json:"send_device,omitempty"`
+	Data        interface{}       `json:"data,omitempty"`
+	VideoSender bool              `json:"videoSender,omitempty"`
+	ICEServers  []model.ICEServer `json:"iceservers,omitempty"`
+	//键盘相关参数
+	KeyboardOp   string                     `json:"keyboard_op,omitempty"`
+	KeyboardData []byte                     `json:"keyboard_data,omitempty"`
+	ICECandidate webrtc.ICECandidateInit    `json:"icecandidate,omitempty"`
+	SDP          *webrtc.SessionDescription `json:"sdp,omitempty"`
 }
 
 // 数据处理
@@ -48,7 +49,7 @@ func RemoteDataHandler(res []byte, conn *swebsocket.ServerConn) {
 			}
 		}
 	case "keyboard":
-		HandlerKeyboard(msg.KeyboardData)
+		HandlerKeyboard(msg)
 	default:
 		fmt.Printf("参数错误%+v\n", msg)
 	}

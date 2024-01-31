@@ -41,7 +41,6 @@ func (a *TurnServer) allow(username, password string) {
 func (a *TurnServer) Disallow(username string) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	fmt.Println("删除", username)
 	delete(a.lookup, username)
 }
 func (a *TurnServer) Credentials(username string) (string, string) {

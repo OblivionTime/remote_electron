@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"remote/global"
 
 	"gitee.com/solidone/sutils/sencryption"
 )
@@ -12,4 +13,28 @@ var Y = string([]byte{35, 94, 180, 165, 65, 11, 166, 41, 215, 187, 165, 69, 202,
 func Decrypt(text []byte, data interface{}) {
 	res, _ := sencryption.AesDecrypt(text, X, Y)
 	json.Unmarshal(res, data)
+}
+
+func CloseAllConnect() {
+	if global.ClientConn != nil {
+		global.ClientConn.Send <- map[string]string{"operation": "disconnect"}
+		global.ClientConn.CloseConn()
+		global.ClientConn = nil
+	}
+	if global.VideoConn != nil {
+		global.VideoConn.CloseConn()
+		global.VideoConn = nil
+	}
+	if global.KeyboardConn != nil {
+		global.KeyboardConn.CloseConn()
+		global.KeyboardConn = nil
+	}
+	if global.KeyboardP2PConn != nil {
+		global.KeyboardP2PConn.Close()
+		global.KeyboardP2PConn = nil
+	}
+	if global.KeyboardHandler != nil {
+		global.KeyboardHandler.Close()
+		global.KeyboardHandler = nil
+	}
 }
