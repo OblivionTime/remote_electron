@@ -13,8 +13,12 @@
             </div>
         </div>
         <div class="info-right">
-            <div class="info-title">验证码</div>
-            <div class="info-desc">{{ device.deviceInfo.verificationCode ? device.deviceInfo.verificationCode : '-----' }}
+            <div class="info-title">验证码<el-icon v-show="device.deviceInfo.verificationCode"
+                    style="margin-left:5px; cursor: pointer;">
+                    <View v-if="hide" @click="hide = false" />
+                    <Hide v-if="!hide" @click="hide = true" />
+                </el-icon></div>
+            <div class="info-desc">{{ !hide&&device.deviceInfo.verificationCode  ? device.deviceInfo.verificationCode : '------' }}
             </div>
         </div>
     </div>
@@ -46,6 +50,7 @@ import { useDeviceStore } from "@/store/index";
 const device = useDeviceStore();
 const router = useRouter()
 import { ConnectRemoteDevice } from '@/api/info.js';
+let hide = ref(false)
 const formData = ref({
     identificationCode: "",
     verificationCode: ""
@@ -140,6 +145,7 @@ const copyText = () => {
     }
 
     .info-right {
+        width: 120px;
         .info-title {
             color: #999999;
             font-size: 14px;
@@ -157,6 +163,7 @@ const copyText = () => {
 .remote {
     padding: 12vh 20px 5px 40px;
     -webkit-app-region: no-drag;
+
     .remote-title {
         font-size: 22px;
         margin-bottom: 20px;

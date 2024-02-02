@@ -33,9 +33,11 @@ type RemoteServerResponse struct {
 	Data      interface{} `json:"data"`
 }
 type WebRtcResponse struct {
-	Name   string      `json:"name"`
-	Data   interface{} `json:"data"`
-	Device string      `json:"device"`
+	Name          string      `json:"name"`
+	Data          interface{} `json:"data"`
+	Device        string      `json:"device"`
+	ClipboardType string      `json:"clipboard_type,omitempty"`
+	ClipboardData []string    `json:"clipboard_data,omitempty"`
 }
 
 // 建立客户端的websocket
@@ -54,13 +56,26 @@ func Connect(ctx *gin.Context) {
 		var res WebRtcResponse
 		json.Unmarshal(msg, &res)
 		if global.Remote_serverConn != nil {
-			global.Remote_serverConn.Send <- client.HandlerResult{
-				Op:          res.Name,
-				Data:        res.Data,
-				Device:      res.Device,
-				SendDevice:  global.DeviceInfo.IdentificationCode,
-				VideoSender: false,
+			if res.Name == "clipboard" {
+				fmt.Println("被控端接收到剪贴板")
+				if global.KeyboardHandler != nil {
+					succesInfo, _ := json.Marshal(model.Clipboard{
+						Op:            "clipboard",
+						ClipboardType: res.ClipboardType,
+						ClipboardData: res.ClipboardData,
+					})
+					global.KeyboardHandler.Send(succesInfo)
+				}
+			} else {
+				global.Remote_serverConn.Send <- client.HandlerResult{
+					Op:          res.Name,
+					Data:        res.Data,
+					Device:      res.Device,
+					SendDevice:  global.DeviceInfo.IdentificationCode,
+					VideoSender: false,
+				}
 			}
+
 		}
 
 	})
@@ -117,11 +132,12 @@ type Device struct {
 	DeviceID           string `json:"device_id,omitempty" `
 	IdentificationCode string `json:"identificationCode" `
 	VerificationCode   string `json:"verificationCode"`
-	Connectioned       string `json:"connectioned,omitempty" ` //连接过的设备
 }
 type ConnectDevice struct {
+	DeviceID           string `json:"device_id"`
 	IdentificationCode string `json:"identificationCode" `
 	VerificationCode   string `json:"verificationCode"`
+	Note               string `json:"note"`
 }
 
 // 获取设备列表
@@ -145,7 +161,7 @@ func ConnectedList(ctx *gin.Context) {
 		response.FailWithMessage(res.Msg, ctx)
 		return
 	}
-	var connectioned string
+	var connectioned []ConnectDevice
 	utils.Decrypt(res.Data, &connectioned)
 	response.OkWithData(connectioned, ctx)
 

@@ -232,20 +232,40 @@ const closeConnect = () => {
 //#region  ------------------------------------------------------------
 let keyboardSocket = ref("");
 var serverClose = true
+const ipcRenderer = window.require('electron').ipcRenderer;
 //模式 键盘初始化连接
 const initBlueToothSocket = () => {
     keyboardSocket.value = new WebSocket(
         `ws://${import.meta.env.VITE_API_URL}/v1/api/remote/server/keyboard_connect?device=${globalDeviceInfo.device}`
     );
-    keyboardSocket.value.onmessage = (msgs) => {
-        // console.log(msgs);
-    };
+    keyboardSocket.value.onopen = () => {
+        //开启剪贴板监听
+        ipcRenderer.send('startWatchClipboard', true);
+        ipcRenderer.on("clipboard", (e, data) => {
+            console.log("clipboard", e, data);
+            if (keyboardSocket.value && keyboardSocket.value.readyState == 1) {
+                keyboardSocket.value.send(JSON.stringify({
+                    operation: "send",
+
+                    data: {
+                        method: "clipboard",
+                        clipboard_type: data.clipboard_type,
+                        clipboard_data: data.list,
+                    },
+                }));
+            }
+        })
+    }
+
+
     keyboardSocket.value.onerror = (err) => {
         console.log(err);
 
 
     }
     operateSocket.value.onclose = () => {
+        //关闭剪贴板监听
+        ipcRenderer.send('stopWatchClipboard');
         if (operateSocket.value) {
             operateSocket.value = null
         }

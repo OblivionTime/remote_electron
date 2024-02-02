@@ -39,11 +39,7 @@ func HandlerData(res []byte, conn *swebsocket.ServerConn) {
 	switch msg.Op {
 	case "join":
 		if _, ok := global.DeviceList[msg.SendDevice]; ok {
-			if _, ok2 := global.DeviceList[msg.Device]; !ok2 {
-				global.DeviceList[msg.SendDevice].Send <- HandlerResult{
-					Op:     "disconnected",
-					Device: msg.Device,
-				}
+			if flag := SendDisconnected(msg.Device, msg.SendDevice); !flag {
 				break
 			}
 			//判断验证码是否正确
@@ -82,20 +78,12 @@ func HandlerData(res []byte, conn *swebsocket.ServerConn) {
 	case "disconnected":
 		global.Turnserver.Disallow(msg.SendDevice)
 		global.Turnserver.Disallow(msg.Device)
-		if _, ok := global.DeviceList[msg.Device]; !ok {
-			global.DeviceList[msg.SendDevice].Send <- HandlerResult{
-				Op:     "disconnected",
-				Device: msg.Device,
-			}
+		if flag := SendDisconnected(msg.Device, msg.SendDevice); !flag {
 			break
 		}
 		global.DeviceList[msg.Device].Send <- msg
 	default:
-		if _, ok := global.DeviceList[msg.Device]; !ok {
-			global.DeviceList[msg.SendDevice].Send <- HandlerResult{
-				Op:     "disconnected",
-				Device: msg.Device,
-			}
+		if flag := SendDisconnected(msg.Device, msg.SendDevice); !flag {
 			break
 		}
 		if msg.Op == "keyboard" && msg.KeyboardOp == "candidate" {
@@ -124,4 +112,16 @@ func Connect(ctx *gin.Context) {
 	conn.WriteReadLoop()
 	fmt.Println(DeviceID, "已退出")
 	delete(global.DeviceList, DeviceID)
+}
+func SendDisconnected(device, sendDevice string) bool {
+	if _, ok := global.DeviceList[device]; !ok {
+		if _, ok2 := global.DeviceList[sendDevice]; ok2 {
+			global.DeviceList[sendDevice].Send <- HandlerResult{
+				Op:     "disconnected",
+				Device: device,
+			}
+		}
+		return false
+	}
+	return true
 }

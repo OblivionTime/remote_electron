@@ -9,6 +9,7 @@ const {
   ipcMain,
   dialog,
 } = require("electron");
+const { startWatchClipboard, stopWatchClipboard } = require("./clipboard.js");
 //#region 启动后端项目 ------------------------------------------------------------
 const { join, dirname } = require("path");
 const { spawn } = require("child_process");
@@ -24,6 +25,67 @@ process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 let MainWindow;
 let MainTray;
 const icon = nativeImage.createFromPath(join(__dirname, "logo.png"));
+//#region ipMain相关操作 ------------------------------------------------------------
+ipcMain.on("showFloating", () => {
+  if (!FloatingWin) {
+    createFloatingWindow();
+  }
+});
+ipcMain.on("closeFloating", () => {
+  if (FloatingWin) {
+    FloatingWin.close();
+    FloatingWin = null;
+    MainWindow.show();
+    MainTray.destroy();
+    MainTray = null;
+    CreateMainTray();
+  }
+});
+ipcMain.on("startWatchClipboard", (e, sender) => {
+  stopWatchClipboard();
+  startWatchClipboard(MainWindow, sender);
+});
+ipcMain.on("stopWatchClipboard", () => {
+  stopWatchClipboard();
+});
+ipcMain.on("createSuspensionMenu", (e) => {
+  const rightM = Menu.buildFromTemplate([
+    {
+      label: "隐藏",
+      click: () => {
+        FloatingWin.hide();
+      },
+    },
+    {
+      label: "退出远控",
+      click: () => {
+        const options = {
+          type: "question",
+          buttons: ["取消", "确定"],
+          defaultId: 1,
+          title: "警告",
+          message: "点击退出后,目标将无法在远控当前设备",
+          detail: "",
+        };
+
+        dialog.showMessageBox(null, options).then((response) => {
+          if (response.response === 1) {
+            FloatingWin.close();
+            FloatingWin = null;
+            MainWindow.show();
+            MainTray.destroy();
+            MainTray = null;
+            CreateMainTray();
+            MainWindow.webContents.send("video_disconnect", "发送成功");
+          }
+        });
+      },
+    },
+  ]);
+  rightM.popup({});
+});
+
+//#endregion -----------------------------------------------------------
 const createWindow = () => {
   MainWindow = new BrowserWindow({
     frame: false,
@@ -46,21 +108,7 @@ const createWindow = () => {
   MainWindow.webContents.on("did-finish-load", () => {
     MainWindow.webContents.send("connect", "发送成功");
   });
-  ipcMain.on("showFloating", () => {
-    if (!FloatingWin) {
-      createFloatingWindow();
-    }
-  });
-  ipcMain.on("closeFloating", () => {
-    if (FloatingWin) {
-      FloatingWin.close();
-      FloatingWin = null;
-      MainWindow.show();
-      MainTray.destroy();
-      MainTray = null;
-      CreateMainTray();
-    }
-  });
+
   // development模式
   if (process.env.VITE_DEV_SERVER_URL) {
     MainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -92,7 +140,7 @@ const CreateMainTray = () => {
   });
 };
 //#region 悬浮球相关 ------------------------------------------------------------
-let FloatingWin;
+let FloatingWin = null;
 const createFloatingWindow = () => {
   MainWindow.hide();
   if (MainTray) {
@@ -162,43 +210,6 @@ const createFloatingWindow = () => {
   MainTray.setToolTip("你当前正在被控制中...");
   MainTray.setContextMenu(contextMenu);
 
-  ipcMain.on("createSuspensionMenu", (e) => {
-    const rightM = Menu.buildFromTemplate([
-      {
-        label: "隐藏",
-        click: () => {
-          FloatingWin.hide();
-        },
-      },
-      {
-        label: "退出远控",
-        click: () => {
-          const options = {
-            type: "question",
-            buttons: ["取消", "确定"],
-            defaultId: 1,
-            title: "警告",
-            message: "点击退出后,目标将无法在远控当前设备",
-            detail: "",
-          };
-
-          dialog.showMessageBox(null, options).then((response) => {
-            if (response.response === 1) {
-              FloatingWin.close();
-              FloatingWin = null;
-              MainWindow.show();
-              MainTray.destroy();
-              MainTray = null;
-              CreateMainTray();
-              MainWindow.webContents.send("video_disconnect", "发送成功");
-            }
-          });
-        },
-      },
-    ]);
-    rightM.popup({});
-  });
-
   // development模式
   if (process.env.VITE_DEV_SERVER_URL) {
     FloatingWin.loadURL(process.env.VITE_DEV_SERVER_URL + "#/controlledEnd");
@@ -213,12 +224,14 @@ const createFloatingWindow = () => {
 
 app.whenReady().then(() => {
   createWindow();
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 app.on("window-all-closed", () => {
   try {
+    stopWatchClipboard();
     if (exampleProcess) {
       process.kill(exampleProcess.pid);
     }

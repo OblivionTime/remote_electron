@@ -25,7 +25,7 @@ func GormSqlite() *gorm.DB {
 	DB.DB().SetMaxOpenConns(100)
 	// SetConnMaxLifetiment 设置连接的最大可复用时间。
 	DB.DB().SetConnMaxLifetime(time.Hour)
-	DB.AutoMigrate(&model.Device{})
+	DB.AutoMigrate(&model.Device{}, &model.Connectioned{})
 
 	return DB
 }

@@ -19,6 +19,7 @@ let nativeRTCSessionDescription =
 const iceServer = {
     iceServers: []
 };
+import { ElMessageBox } from "element-plus";
 //初始化PC源
 function initPC(deviceID) {
     let pc = new PeerConnection(iceServer);
@@ -42,14 +43,17 @@ function initPC(deviceID) {
     pc.oniceconnectionstatechange = (evt) => {
         setTimeout(() => {
             let connectionState = evt.target.connectionState
+            console.log(connectionState);
             if (connectionState == "failed" || connectionState == "disconnected" || connectionState == "closed") {
+                ipcRenderer.send("closeFloating")
                 ElMessageBox.alert('对方断开连接', '连接断开', {
                     confirmButtonText: '确定',
                     showClose: false,
                     callback: () => {
-                        ipcRenderer.send("closeFloating")
-                        selfPC.close()
-                        selfPC = null
+                        if (selfPC) {
+                            selfPC.close()
+                            selfPC = null
+                        }
                     },
 
                 })
@@ -134,13 +138,28 @@ onMounted(() => {
                 .then((res) => {
                     if (res.code == 0) {
                         device.deviceInfo = res.data
-                        device.deviceInfo.connectioned = JSON.parse(res.data.connectioned)
                         device.online = {
                             status: true,
                             message: "连接服务器成功",
                         }
                         //注册设备
                         socket = new WebSocket("ws://127.0.0.1:3002/v1/api/remote/server/connect")
+
+                        socket.onopen = (err) => {
+                            console.log("被控端监听剪贴板");
+                            //被控端监听剪贴板
+                            ipcRenderer.on("clipboard", (e, data) => {
+                                if (data.sender) {
+                                    return
+                                }
+                                socket.send(JSON.stringify({
+                                    name: "clipboard",
+                                    clipboard_type: data.clipboard_type,
+                                    clipboard_data: data.list
+                                }))
+                            })
+
+                        }
                         socket.onmessage = (msg) => {
                             let data = JSON.parse(msg.data)
                             switch (data.operation) {
@@ -168,15 +187,23 @@ onMounted(() => {
                                     break;
                                 case "video_disconnected":
                                     ipcRenderer.send("closeFloating")
-                                    selfPC.close()
-                                    selfPC = null
+                                    if (selfPC) {
+                                        selfPC.close()
+                                        selfPC = null
+
+                                    }
                                     break
                                 case "disconnected":
+                                    ipcRenderer.send("closeFloating")
+                                    if (selfPC) {
+                                        selfPC.close()
+                                        selfPC = null
+
+                                    }
                                     device.deviceInfo = {
                                         device_id: "",
                                         identificationCode: "",
                                         verificationCode: "",
-                                        connectioned: [],
                                     }
                                     device.online = {
                                         status: false,
@@ -199,7 +226,6 @@ onMounted(() => {
                                 device_id: "",
                                 identificationCode: "",
                                 verificationCode: "",
-                                connectioned: [],
                             }
                             device.online = {
                                 status: false,
@@ -213,7 +239,6 @@ onMounted(() => {
                                 device_id: "",
                                 identificationCode: "",
                                 verificationCode: "",
-                                connectioned: [],
                             }
                             device.online = {
                                 status: false,
@@ -225,7 +250,6 @@ onMounted(() => {
                             device_id: "",
                             identificationCode: "",
                             verificationCode: "",
-                            connectioned: [],
                         }
                         device.online = {
                             status: false,
@@ -241,7 +265,6 @@ onMounted(() => {
                 device_id: "",
                 identificationCode: "",
                 verificationCode: "",
-                connectioned: [],
             }
             device.online = {
                 status: false,

@@ -6,6 +6,7 @@ import (
 	"remote/global"
 	"remote/model"
 
+	"github.com/go-vgo/robotgo"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -39,8 +40,6 @@ func InitReceiveKeyboardP2P(ICEServers []model.ICEServer, device string) {
 			fmt.Printf("Peer Connection State has changed: %s\n", s.String())
 			fmt.Println("连接断开", s.String())
 			if global.KeyboardHandler != nil {
-				global.KeyboardP2PConn.Close()
-				global.KeyboardP2PConn = nil
 				global.KeyboardHandler.Close()
 				global.KeyboardHandler = nil
 			}
@@ -79,10 +78,6 @@ func InitReceiveKeyboardP2P(ICEServers []model.ICEServer, device string) {
 			}
 		})
 		global.KeyboardHandler.OnClose(func() {
-			if global.KeyboardP2PConn != nil {
-				global.KeyboardP2PConn.Close()
-				global.KeyboardP2PConn = nil
-			}
 			fmt.Printf("close")
 		})
 	})
@@ -119,8 +114,6 @@ func InitSenderKeyboardP2P(ICEServers []model.ICEServer, device string) {
 			fmt.Printf("Peer Connection State has changed: %s\n", s.String())
 			fmt.Println("连接断开", s.String())
 			if global.KeyboardHandler != nil {
-				global.KeyboardP2PConn.Close()
-				global.KeyboardP2PConn = nil
 				global.KeyboardHandler.Close()
 				global.KeyboardHandler = nil
 			}
@@ -144,11 +137,16 @@ func InitSenderKeyboardP2P(ICEServers []model.ICEServer, device string) {
 	global.KeyboardHandler.OnOpen(func() {
 		fmt.Println("控制端开启成功")
 	})
-	global.KeyboardHandler.OnClose(func() {
-		if global.KeyboardP2PConn != nil {
-			global.KeyboardP2PConn.Close()
-			global.KeyboardP2PConn = nil
+	global.KeyboardHandler.OnMessage(func(msg webrtc.DataChannelMessage) {
+		var data model.Clipboard
+		json.Unmarshal(msg.Data, &data)
+		fmt.Println("收到被控端的剪贴板了")
+		for _, c := range data.ClipboardData {
+			robotgo.WriteAll(c)
 		}
+
+	})
+	global.KeyboardHandler.OnClose(func() {
 		fmt.Printf("close")
 	})
 	//发送offer

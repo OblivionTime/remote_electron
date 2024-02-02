@@ -16,12 +16,14 @@ type WebRTCSendData struct {
 	SDP          *webrtc.SessionDescription `json:"sdp,omitempty"`
 }
 type ReceiveJson struct {
-	Method string  `json:"method,omitempty"`
-	Arg1   int     `json:"arg1,omitempty"`
-	Arg2   int     `json:"arg2,omitempty"`
-	Key    string  `json:"key,omitempty"`
-	Width  float64 `json:"width,omitempty"`
-	Height float64 `json:"height,omitempty"`
+	Method        string   `json:"method,omitempty"`
+	Arg1          int      `json:"arg1,omitempty"`
+	Arg2          int      `json:"arg2,omitempty"`
+	Key           string   `json:"key,omitempty"`
+	Width         float64  `json:"width,omitempty"`
+	Height        float64  `json:"height,omitempty"`
+	ClipboardType string   `json:"clipboard_type,omitempty"`
+	ClipboardData []string `json:"clipboard_data,omitempty"`
 }
 
 // 分辨率映射
@@ -62,6 +64,12 @@ func Operation(oper ReceiveJson) error {
 		return robotgo.KeyDown(oper.Key)
 	case "KeyRelease":
 		return robotgo.KeyUp(oper.Key)
+	case "clipboard":
+		fmt.Println("监听到剪贴板了")
+		for _, c := range oper.ClipboardData {
+			robotgo.WriteAll(c)
+		}
+		return nil
 	default:
 		return fmt.Errorf("参数不正确")
 	}

@@ -13,6 +13,8 @@ const ipcRenderer = window.require("electron").ipcRenderer;
 const win = remote.getCurrentWindow();
 
 onMounted(() => {
+    //开启剪贴板监听
+    ipcRenderer.send('startWatchClipboard', false);
     let biasX = 0;
     let biasY = 0;
     document.addEventListener('mousedown', function (e) {
@@ -39,6 +41,8 @@ onMounted(() => {
 
 })
 onUnmounted(() => {
+    //开启剪贴板监听
+    ipcRenderer.send('stopWatchClipboard', false);
     window.removeEventListener("blur", () => {
         if (!dropdown1.value) return
         dropdown1.value.handleClose()

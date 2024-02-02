@@ -10,6 +10,7 @@ const {
   ipcMain,
   dialog
 } = require("electron");
+const { startWatchClipboard, stopWatchClipboard } = require("./clipboard.js");
 const { join, dirname } = require("path");
 const { spawn } = require("child_process");
 let exampleProcess;
@@ -18,6 +19,63 @@ process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 let MainWindow;
 let MainTray;
 const icon = nativeImage.createFromPath(join(__dirname, "logo.png"));
+ipcMain.on("showFloating", () => {
+  if (!FloatingWin) {
+    createFloatingWindow();
+  }
+});
+ipcMain.on("closeFloating", () => {
+  if (FloatingWin) {
+    FloatingWin.close();
+    FloatingWin = null;
+    MainWindow.show();
+    MainTray.destroy();
+    MainTray = null;
+    CreateMainTray();
+  }
+});
+ipcMain.on("startWatchClipboard", (e, sender) => {
+  stopWatchClipboard();
+  startWatchClipboard(MainWindow, sender);
+});
+ipcMain.on("stopWatchClipboard", () => {
+  stopWatchClipboard();
+});
+ipcMain.on("createSuspensionMenu", (e) => {
+  const rightM = Menu.buildFromTemplate([
+    {
+      label: "隐藏",
+      click: () => {
+        FloatingWin.hide();
+      }
+    },
+    {
+      label: "退出远控",
+      click: () => {
+        const options = {
+          type: "question",
+          buttons: ["取消", "确定"],
+          defaultId: 1,
+          title: "警告",
+          message: "点击退出后,目标将无法在远控当前设备",
+          detail: ""
+        };
+        dialog.showMessageBox(null, options).then((response) => {
+          if (response.response === 1) {
+            FloatingWin.close();
+            FloatingWin = null;
+            MainWindow.show();
+            MainTray.destroy();
+            MainTray = null;
+            CreateMainTray();
+            MainWindow.webContents.send("video_disconnect", "发送成功");
+          }
+        });
+      }
+    }
+  ]);
+  rightM.popup({});
+});
 const createWindow = () => {
   MainWindow = new BrowserWindow({
     frame: false,
@@ -39,21 +97,6 @@ const createWindow = () => {
   CreateMainTray();
   MainWindow.webContents.on("did-finish-load", () => {
     MainWindow.webContents.send("connect", "发送成功");
-  });
-  ipcMain.on("showFloating", () => {
-    if (!FloatingWin) {
-      createFloatingWindow();
-    }
-  });
-  ipcMain.on("closeFloating", () => {
-    if (FloatingWin) {
-      FloatingWin.close();
-      FloatingWin = null;
-      MainWindow.show();
-      MainTray.destroy();
-      MainTray = null;
-      CreateMainTray();
-    }
   });
   if (process.env.VITE_DEV_SERVER_URL) {
     MainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -82,7 +125,7 @@ const CreateMainTray = () => {
     event.preventDefault();
   });
 };
-let FloatingWin;
+let FloatingWin = null;
 const createFloatingWindow = () => {
   MainWindow.hide();
   if (MainTray) {
@@ -149,41 +192,6 @@ const createFloatingWindow = () => {
   });
   MainTray.setToolTip("你当前正在被控制中...");
   MainTray.setContextMenu(contextMenu);
-  ipcMain.on("createSuspensionMenu", (e) => {
-    const rightM = Menu.buildFromTemplate([
-      {
-        label: "隐藏",
-        click: () => {
-          FloatingWin.hide();
-        }
-      },
-      {
-        label: "退出远控",
-        click: () => {
-          const options = {
-            type: "question",
-            buttons: ["取消", "确定"],
-            defaultId: 1,
-            title: "警告",
-            message: "点击退出后,目标将无法在远控当前设备",
-            detail: ""
-          };
-          dialog.showMessageBox(null, options).then((response) => {
-            if (response.response === 1) {
-              FloatingWin.close();
-              FloatingWin = null;
-              MainWindow.show();
-              MainTray.destroy();
-              MainTray = null;
-              CreateMainTray();
-              MainWindow.webContents.send("video_disconnect", "发送成功");
-            }
-          });
-        }
-      }
-    ]);
-    rightM.popup({});
-  });
   if (process.env.VITE_DEV_SERVER_URL) {
     FloatingWin.loadURL(process.env.VITE_DEV_SERVER_URL + "#/controlledEnd");
   } else {
@@ -199,6 +207,7 @@ app.whenReady().then(() => {
 });
 app.on("window-all-closed", () => {
   try {
+    stopWatchClipboard();
     if (exampleProcess) {
       process.kill(exampleProcess.pid);
     }

@@ -10,6 +10,7 @@ import (
 	"gitee.com/solidone/sutils/swebsocket"
 	logger "github.com/OblivionTime/simple-logger"
 	"github.com/gin-gonic/gin"
+	"github.com/go-vgo/robotgo"
 )
 
 type Request struct {
@@ -21,12 +22,14 @@ type Request struct {
 }
 
 type SendData struct {
-	Method string  `json:"method"`
-	Arg1   int     `json:"arg1,omitempty"`
-	Arg2   int     `json:"arg2,omitempty"`
-	Key    string  `json:"key,omitempty"`
-	Width  float64 `json:"width,omitempty"`
-	Height float64 `json:"height,omitempty"`
+	Method        string   `json:"method"`
+	Arg1          int      `json:"arg1,omitempty"`
+	Arg2          int      `json:"arg2,omitempty"`
+	Key           string   `json:"key,omitempty"`
+	Width         float64  `json:"width,omitempty"`
+	Height        float64  `json:"height,omitempty"`
+	ClipboardType string   `json:"clipboard_type,omitempty"`
+	ClipboardData []string `json:"clipboard_data,omitempty"`
 }
 
 // 建立键盘的websocket
@@ -103,5 +106,14 @@ func ConnectKeyboard(ctx *gin.Context) {
 	})
 
 	global.KeyboardConn.WriteReadLoop()
+	//释放掉所有资源
+	realse()
 	global.KeyboardConn = nil
+}
+func realse() {
+	global.OpenWatch = false
+	robotgo.KeyUp("lalt")
+	robotgo.KeyUp("ralt")
+	robotgo.KeyUp("lctrl")
+	robotgo.KeyUp("rctrl")
 }

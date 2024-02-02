@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"remote_server/global"
 	"remote_server/model"
@@ -12,8 +11,10 @@ import (
 )
 
 type ConnectDevice struct {
-	IdentificationCode string `json:"identificationCode" `
-	VerificationCode   string `json:"verificationCode"`
+	DeviceID           string `json:"device_id"`
+	IdentificationCode string `json:"identificationCode" gorm:"column:identificationCode"`
+	VerificationCode   string `json:"verificationCode" gorm:"column:verificationCode"`
+	Note               string `json:"note" gorm:"column:note"`
 }
 
 // 获取自己的识别码和验证码
@@ -31,7 +32,6 @@ func GetCode(ctx *gin.Context) {
 		deviceInfo.DeviceID = DeviceID
 		deviceInfo.IdentificationCode = utils.RandomlyGeneratedIdentificationCodes()
 		deviceInfo.VerificationCode = utils.RandomlyGenerateVerificationCodes()
-		deviceInfo.Connectioned = "[]"
 
 		//判断识别码是否重复
 		global.DB.Model(model.Device{}).Create(deviceInfo)
@@ -60,31 +60,15 @@ func DeviceOnlineStatus(ctx *gin.Context) {
 		response.FailWithMessage("验证码错误!!", ctx)
 		return
 	}
-	// //发送消息给目标机
-	// global.DeviceList[msg.IdentificationCode].Send <- DataTransmission{
-	// 	Op:     "join",
-	// 	Device: DeviceID,
-	// }
 	//判断当前设备是否连接过
-	global.DB.Model(model.Device{}).Where("identificationCode = ?", DeviceID).First(&deviceInfo)
-
-	connections := make([]ConnectDevice, 0)
-	json.Unmarshal([]byte(deviceInfo.Connectioned), &connections)
-	flag := false
-	for _, conn := range connections {
-		if msg.IdentificationCode == conn.IdentificationCode {
-			flag = true
-			break
-		}
-	}
-	if !flag {
-		connections = append(connections, ConnectDevice{
-			IdentificationCode: msg.IdentificationCode,
-			VerificationCode:   msg.VerificationCode,
+	var connected model.Connectioned
+	res := global.DB.Model(model.Connectioned{}).Where("identificationCode = ? and connected_id=?", DeviceID, msg.IdentificationCode).First(&connected)
+	if res.RowsAffected == 0 || res.Error != nil {
+		res = global.DB.Model(model.Connectioned{}).Create(&model.Connectioned{
+			IdentificationCode: DeviceID,
+			ConnectedId:        msg.IdentificationCode,
 		})
-		cs, _ := json.Marshal(connections)
-		fmt.Println(connections)
-		global.DB.Model(model.Device{}).Where("identificationCode = ?", DeviceID).UpdateColumn("connectioned", string(cs))
+		fmt.Println(res.Error)
 	}
 	response.Ok(ctx)
 }
@@ -96,8 +80,8 @@ func GetConnectDeviceList(ctx *gin.Context) {
 		response.FailWithMessage("未获取到设备信息", ctx)
 		return
 	}
-	var deviceInfo model.Device
-	global.DB.Model(model.Device{}).Where("identificationCode = ?", DeviceID).First(&deviceInfo)
-
-	response.OkWithData(deviceInfo.Connectioned, ctx)
+	var deviceList []ConnectDevice
+	global.DB.Raw("select d.*,c.note from connectioned as c,device as d where c.identificationCode=? and d.identificationCode=c.connected_id", DeviceID).Scan(&deviceList)
+	fmt.Println(deviceList)
+	response.OkWithData(deviceList, ctx)
 }
