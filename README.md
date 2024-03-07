@@ -29,10 +29,10 @@
 
 ## npm
 
-![在这里插入图片描述](images/732b1f4872104f28955cfdab601bf0c8.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/732b1f4872104f28955cfdab601bf0c8.png)
 ## golang
 
-![在这里插入图片描述](images/3437d3f67c7640cd8dc74a7ed773e51f.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/3437d3f67c7640cd8dc74a7ed773e51f.png)
 # 📍 服务端相关配置config.yaml
 ```yaml
 serveraddr: ":9998"  #后端地址
@@ -80,7 +80,7 @@ yarn build
 
 1. 打开软件第一时间修改服务器地址
 
-![在这里插入图片描述](images/8333eed7c80f4526bdcbce7d8bc722f5.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/8333eed7c80f4526bdcbce7d8bc722f5.png)
 
 **技术人员根据自己的需求去修改**
 
@@ -93,39 +93,41 @@ yarn build
 * 悬浮球
 * 保存连接过的设备
 * 实现自己的turn服务器
+* 文件传输功能
 # 🖼️ 项目截图
 
-![在这里插入图片描述](images/bbd01349c078467eabae7c8932b48b6d.png)
-![在这里插入图片描述](images/9fb5fa81c3dd429d978208be0dbed147.png)
-![在这里插入图片描述](images/c4ab491431304ead91913ee6b3f627a8.png)
-![在这里插入图片描述](images/7f574cc3887a45e58a1543e73f847f45.png)
-![在这里插入图片描述](images/9b0e815f5b5e44a8aab2a7ee755bc874.png)
-![在这里插入图片描述](images/42faa84b55a8410d9b7e3bb19287afd4.png)
-![在这里插入图片描述](images/82128b1fd6894065a1170506ccd2497a.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/bbd01349c078467eabae7c8932b48b6d.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/9fb5fa81c3dd429d978208be0dbed147.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/c4ab491431304ead91913ee6b3f627a8.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/7f574cc3887a45e58a1543e73f847f45.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/9b0e815f5b5e44a8aab2a7ee755bc874.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/42faa84b55a8410d9b7e3bb19287afd4.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/82128b1fd6894065a1170506ccd2497a.png)
 
-![在这里插入图片描述](images/693e8a2cb66649daa298ac7811498c9a.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/693e8a2cb66649daa298ac7811498c9a.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/direct/f8aaa5761f7f4d048a51390271f3a034.png)
 
 ## 注意electron打包会出现的问题
 
 ## 打包前必须做的事
 
 - 进入到下面目录C:\Users\自己的用户名\AppData\Local\electron-builder\Cache
-  ![在这里插入图片描述](images/07e7a371077042039fe75a7aae4ada23.png)
+  ![在这里插入图片描述](https://img-blog.csdnimg.cn/07e7a371077042039fe75a7aae4ada23.png)
 
 
 
 - 创建目录**winCodeSign**和**nsis**
-  ![在这里插入图片描述](images/99b0ca3b41fb424498775ad81274c950.png)
+  ![在这里插入图片描述](https://img-blog.csdnimg.cn/99b0ca3b41fb424498775ad81274c950.png)
 
 
 
 - 将**electron必须安装包**目录下的**winCodeSign-2.6.0.7z**解压到**C:\Users\自己的用户名\AppData\Local\electron-builder\Cache\winCodeSign**目录下
 
-![在这里插入图片描述](images/fb7781236a1b4fa8a8b42f2c19c80346.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/fb7781236a1b4fa8a8b42f2c19c80346.png)
 
 
 - 进入到**C:\Users\自己的用户名\AppData\Local\electron-builder\Cache\nsis**目录下,将**electron必须安装包**目录下分别解压成如下图所示的样子
-  ![在这里插入图片描述](images/6d91296313c9490a9de1b58c0db6373e.png)
+  ![在这里插入图片描述](https://img-blog.csdnimg.cn/6d91296313c9490a9de1b58c0db6373e.png)
   详细教程:[https://www.cnblogs.com/liliyou/p/13423709.html](https://www.cnblogs.com/liliyou/p/13423709.html)
 
 
@@ -133,4 +135,5 @@ yarn build
 # 结语
 
 
-![在这里插入图片描述](images/e8be97b67c1b43a68add5c6c5944fbc9.jpeg)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/e8be97b67c1b43a68add5c6c5944fbc9.jpeg)
+
