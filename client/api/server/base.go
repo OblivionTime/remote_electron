@@ -178,6 +178,10 @@ func CheckDeviceOnline(ctx *gin.Context) {
 		response.Fail(ctx)
 		return
 	}
+	if global.DeviceInfo.IdentificationCode == msg.IdentificationCode {
+		response.FailWithMessage("请勿连接自己", ctx)
+		return
+	}
 	remoteURL := fmt.Sprintf("%s/v1/api/remote/online?code=%s", global.RemoteServerIP, global.DeviceInfo.IdentificationCode)
 	client := shttp.NewClient()
 	err := client.POST(remoteURL, msg)

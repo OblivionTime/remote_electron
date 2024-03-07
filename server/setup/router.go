@@ -54,5 +54,6 @@ func setupRouter(router *gin.Engine) {
 		remoteRouter.POST("/online", api.DeviceOnlineStatus)
 		remoteRouter.GET("/connect", api.Connect)
 		remoteRouter.GET("/device_list", api.GetConnectDeviceList)
+		remoteRouter.GET("/file_connect", api.FileConnect)
 	}
 }

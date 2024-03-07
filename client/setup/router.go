@@ -52,6 +52,7 @@ func setupRouter(router *gin.Engine) {
 		serverRouter := remoteRouter.Group("/server")
 		{
 			serverRouter.GET("/connect", api.Connect)
+			serverRouter.GET("/file_connect", api.FileConnect)
 			serverRouter.GET("/device_list", api.ConnectedList)
 			serverRouter.GET("/video_connect", api.ConnectVideo)
 			serverRouter.GET("/keyboard_connect", api.ConnectKeyboard)

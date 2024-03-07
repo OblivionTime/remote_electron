@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/kbinani/screenshot v0.0.0-20230812210009-b87d31814237
 	github.com/pion/webrtc/v4 v4.0.0-beta.7
+	github.com/shirou/gopsutil v3.21.11+incompatible
 )
 
 require (

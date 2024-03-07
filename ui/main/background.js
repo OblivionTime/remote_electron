@@ -86,6 +86,7 @@ ipcMain.on("createSuspensionMenu", (e) => {
 });
 
 //#endregion -----------------------------------------------------------
+//#region 主窗口 ------------------------------------------------------------
 const createWindow = () => {
   MainWindow = new BrowserWindow({
     frame: false,
@@ -111,7 +112,7 @@ const createWindow = () => {
 
   // development模式
   if (process.env.VITE_DEV_SERVER_URL) {
-    MainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    MainWindow.loadURL(process.env.VITE_DEV_SERVER_URL + "#/index");
   } else {
     MainWindow.setMenu(null);
 
@@ -119,6 +120,9 @@ const createWindow = () => {
     process.chdir(appPath + "/../../");
     exampleProcess = spawn("remote.exe");
     MainWindow.loadFile(join(__dirname, "../dist/index.html"));
+    MainWindow.webContents.executeJavaScript(
+      `window.location.hash = '#/index';`
+    );
   }
 };
 const CreateMainTray = () => {
@@ -139,6 +143,8 @@ const CreateMainTray = () => {
     event.preventDefault();
   });
 };
+//#endregion -----------------------------------------------------------
+
 //#region 悬浮球相关 ------------------------------------------------------------
 let FloatingWin = null;
 const createFloatingWindow = () => {
@@ -217,11 +223,67 @@ const createFloatingWindow = () => {
     // FloatingWin.webContents.openDevTools()
   } else {
     // FloatingWin.setMenu(null);
-    FloatingWin.loadFile(join(__dirname, "../dist/index.html/#/controlledEnd"));
+    FloatingWin.loadFile(join(__dirname, "../dist/index.html"));
+    FloatingWin.webContents.executeJavaScript(
+      `window.location.hash = '#/controlledEnd';`
+    );
   }
 };
 //#endregion -----------------------------------------------------------
-
+//#region 文件相关 ------------------------------------------------------------
+let FileWindow;
+ipcMain.on("closeFileDialog", () => {
+  if (FileWindow) {
+    FileWindow.close();
+    FileWindow = null;
+  }
+});
+ipcMain.on("createFileWindow", (e, item) => {
+  const { identificationCode, verificationCode } = item;
+  createFileWindow(identificationCode, verificationCode);
+});
+const createFileWindow = (device, code) => {
+  if (FileWindow) {
+    MainWindow.webContents.send("errmsg", "目前只支持远程一个目标进行传输文件");
+    return;
+  }
+  FileWindow = new BrowserWindow({
+    width: 850,
+    useContentSize: true,
+    icon: icon,
+    height: 610,
+    minWidth: 850,
+    minHeight: 610,
+    center: true,
+    title: "文件传输",
+    useContenRtSize: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      enableRemoteModule: true,
+      contextIsolation: false,
+    },
+  });
+  FileWindow.on("close", (event) => {
+    if (FileWindow) {
+      FileWindow = null;
+    }
+  });
+  // development模式
+  if (process.env.VITE_DEV_SERVER_URL) {
+    FileWindow.loadURL(
+      process.env.VITE_DEV_SERVER_URL +
+        `#/fileManage?device=${device}&code=${code}`
+    );
+  } else {
+    // FloatingWin.setMenu(null);
+    FileWindow.loadFile(join(__dirname, "../dist/index.html"));
+    FileWindow.webContents.executeJavaScript(
+      `window.location.hash = '#/fileManage?device=${device}&code=${code}';`
+    );
+  }
+};
+//#endregion -----------------------------------------------------------
 app.whenReady().then(() => {
   createWindow();
 

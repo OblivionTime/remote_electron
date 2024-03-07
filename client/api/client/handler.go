@@ -50,6 +50,8 @@ func RemoteDataHandler(res []byte, conn *swebsocket.ServerConn) {
 		}
 	case "keyboard":
 		HandlerKeyboard(msg)
+	case "file_join":
+		go HandlerFileShare(msg)
 	default:
 		fmt.Printf("参数错误%+v\n", msg)
 	}

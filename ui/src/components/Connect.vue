@@ -18,7 +18,8 @@
                     <View v-if="hide" @click="hide = false" />
                     <Hide v-if="!hide" @click="hide = true" />
                 </el-icon></div>
-            <div class="info-desc">{{ !hide&&device.deviceInfo.verificationCode  ? device.deviceInfo.verificationCode : '------' }}
+            <div class="info-desc">{{ !hide && device.deviceInfo.verificationCode ? device.deviceInfo.verificationCode :
+                '------' }}
             </div>
         </div>
     </div>
@@ -31,17 +32,28 @@
                 <el-input v-model="formData.identificationCode" oninput="value=value.replace(/[^0-9]/g, '')"
                     placeholder="请输入识别码" style="height:50px;flex:3" maxlength="9">
                 </el-input>
-                <el-input v-model="formData.verificationCode" placeholder="请输入验证码" style="height:50px;flex:1" maxlength="6">
+                <el-input v-model="formData.verificationCode" placeholder="请输入验证码" style="height:50px;flex:1"
+                    maxlength="6">
                 </el-input>
             </div>
-            <div class="btn"> <el-button :disabled="!formData.identificationCode || !formData.verificationCode"
-                    type="primary" style="height:50px;width:120px" @click="Connect">连接</el-button>
+            <div class="btn">
+                <el-button :disabled="!formData.identificationCode || !formData.verificationCode" type="primary"
+                    style="height:50px;width:120px" @click="Connect" :loading="tryConnect">连接</el-button>
             </div>
         </div>
+        <div style="margin-top:10px">
+            <el-radio-group v-model="mode">
+                <el-radio :label="'remote'">远程控制</el-radio>
+                <el-radio :label="'file'">文件传输</el-radio>
+            </el-radio-group>
+        </div>
+
     </div>
 </template>
 
 <script setup>
+import { Eleme } from '@element-plus/icons-vue'
+
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import clipboard3 from "vue-clipboard3"
@@ -51,10 +63,12 @@ const device = useDeviceStore();
 const router = useRouter()
 import { ConnectRemoteDevice } from '@/api/info.js';
 let hide = ref(false)
+let tryConnect = ref(false)
 const formData = ref({
     identificationCode: "",
     verificationCode: ""
 })
+let mode = ref("remote")
 const Connect = () => {
     if (formData.value.identificationCode?.length != 9 || formData.value.verificationCode?.length != 6) {
         return ElMessage({
@@ -72,10 +86,16 @@ const Connect = () => {
             type: 'warning',
         })
     }
+    tryConnect.value = true
+
     ConnectRemoteDevice(formData.value)
         .then((res) => {
             if (res.code == 0) {
-                router.push({ path: "/remote", query: { device: formData.value.identificationCode, code: formData.value.verificationCode } })
+                if (mode.value == "remote") {
+                    router.push({ path: "/remote", query: { device: formData.value.identificationCode, code: formData.value.verificationCode } })
+                } else {
+                    ipcRenderer.send("createFileWindow", { ...formData.value })
+                }
             } else {
                 ElMessageBox.alert(res.msg, '警告', {
                     confirmButtonText: '确定',
@@ -90,9 +110,14 @@ const Connect = () => {
                 showClose: false,
 
             })
-        });
+        })
+        .finally(() => {
+            tryConnect.value = false
+        })
 
 }
+const ipcRenderer = window.require('electron').ipcRenderer;
+
 const copyText = () => {
     toClipboard(device.deviceInfo.identificationCode).then(() => {
         // 复制成功时的回调
@@ -146,6 +171,7 @@ const copyText = () => {
 
     .info-right {
         width: 120px;
+
         .info-title {
             color: #999999;
             font-size: 14px;

@@ -124,6 +124,11 @@ onMounted(() => {
             }))
         }
     })
+    ipcRenderer.on("errmsg", (e, data) => {
+        ElMessageBox.alert(data, '警告', {
+            confirmButtonText: '确定',
+        })
+    })
     ipcRenderer.on("connect", () => {
         if (navigator.onLine) {
             window.addEventListener("beforeunload", () => {
@@ -146,9 +151,9 @@ onMounted(() => {
                         socket = new WebSocket("ws://127.0.0.1:3002/v1/api/remote/server/connect")
 
                         socket.onopen = (err) => {
-                            console.log("被控端监听剪贴板");
                             //被控端监听剪贴板
                             ipcRenderer.on("clipboard", (e, data) => {
+                                console.log("被控端监听剪贴板");
                                 if (data.sender) {
                                     return
                                 }
@@ -287,4 +292,4 @@ onUnmounted(() => {
 
 </script>
 
-<style lang="scss" ></style>
+<style lang="scss"></style>

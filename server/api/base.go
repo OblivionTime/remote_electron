@@ -65,7 +65,7 @@ func DeviceOnlineStatus(ctx *gin.Context) {
 	res := global.DB.Model(model.Connectioned{}).Where("identificationCode = ? and connected_id=?", DeviceID, msg.IdentificationCode).First(&connected)
 	if res.RowsAffected == 0 || res.Error != nil {
 		res = global.DB.Model(model.Connectioned{}).Create(&model.Connectioned{
-			IdentificationCode: DeviceID,
+			IdentificationCode: DeviceID,  
 			ConnectedId:        msg.IdentificationCode,
 		})
 		fmt.Println(res.Error)

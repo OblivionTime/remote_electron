@@ -6,6 +6,7 @@ import (
 	"remote_server/config"
 	"remote_server/global"
 	"remote_server/model"
+	"time"
 
 	"gitee.com/solidone/sutils/swebsocket"
 	logger "github.com/OblivionTime/simple-logger"
@@ -113,6 +114,7 @@ func Connect(ctx *gin.Context) {
 	fmt.Println(DeviceID, "已退出")
 	delete(global.DeviceList, DeviceID)
 }
+
 func SendDisconnected(device, sendDevice string) bool {
 	if _, ok := global.DeviceList[device]; !ok {
 		if _, ok2 := global.DeviceList[sendDevice]; ok2 {
@@ -124,4 +126,109 @@ func SendDisconnected(device, sendDevice string) bool {
 		return false
 	}
 	return true
+}
+
+type Device struct {
+	DeviceID string                 `json:"device_id"`
+	Conn     *swebsocket.ServerConn `json:"connection"`
+}
+
+var DeviceList = make(map[string][]Device, 0)
+
+// 远程服务器发送的数据
+type FileRemoteReceive struct {
+	Op     string `json:"op,omitempty"`
+	Device string `json:"device,omitempty"`
+	Code   string `json:"code,omitempty"`
+}
+
+func FileConnect(ctx *gin.Context) {
+	deviceId := ctx.Query("device_id")
+	room := ctx.Query("room")
+	if deviceId == "" || room == "" {
+		return
+	}
+	wsConn, err := global.Upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	ClientConn, _ := swebsocket.CreateConn(wsConn, 1)
+	if _, ok := DeviceList[room]; !ok {
+		DeviceList[room] = make([]Device, 0)
+	}
+	if len(DeviceList[room]) == 2 {
+		DeviceList[room][1] = Device{
+			DeviceID: deviceId,
+			Conn:     ClientConn,
+		}
+	} else {
+		DeviceList[room] = append(DeviceList[room], Device{
+			DeviceID: deviceId,
+			Conn:     ClientConn,
+		})
+	}
+
+	ClientConn.Handle(func(res []byte, conn *swebsocket.ServerConn) {
+		var msg FileRemoteReceive
+		json.Unmarshal(res, &msg)
+		if msg.Op == "join" {
+			if _, ok := global.DeviceList[msg.Device]; !ok {
+				conn.Send <- map[string]string{
+					"op":     "disconnected",
+					"errmsg": "对方不在线",
+				}
+			}
+
+			//判断验证码是否正确
+			var deviceInfo model.Device
+			global.DB.Model(model.Device{}).Where("identificationCode = ?", msg.Device).First(&deviceInfo)
+			if deviceInfo.VerificationCode != msg.Code {
+				conn.Send <- map[string]string{
+					"op":     "disconnected",
+					"errmsg": "验证码不正确",
+				}
+				return
+			}
+			Username, Credential := global.Turnserver.Credentials(fmt.Sprintf("%s_remote_%v", room, time.Now().UnixNano()))
+			iceClient := []ICEServer{{
+				URL:        fmt.Sprintf("turn:%v:%d?transport=udp", config.Config.Turn.PublicIP, config.Config.Turn.Port),
+				Credential: Credential,
+				Username:   Username,
+			}, {
+				URL:        fmt.Sprintf("turn:%v:%d?transport=tcp", config.Config.Turn.PublicIP, config.Config.Turn.Port),
+				Credential: Credential,
+				Username:   Username,
+			}}
+			conn.Send <- map[string]interface{}{
+				"op":         "ice_server",
+				"iceservers": iceClient,
+			}
+			if _, ok := global.DeviceList[msg.Device]; ok {
+				global.DeviceList[msg.Device].Send <- HandlerResult{
+					Op:         "file_join",
+					ICEServers: iceClient,
+					SendDevice: deviceId,
+				}
+			}
+
+			return
+		}
+		for _, device := range DeviceList[room] {
+			if device.DeviceID == deviceId {
+				continue
+			}
+			device.Conn.Send <- res
+		}
+	})
+	ClientConn.WriteReadLoop()
+	for _, device := range DeviceList[room] {
+		if device.DeviceID == deviceId {
+			continue
+		}
+		device.Conn.CloseConn()
+	}
+	delete(DeviceList, room)
+	global.Turnserver.Disallow(room + "_fileshare")
+	fmt.Println("清空所有", DeviceList[room])
 }

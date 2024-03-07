@@ -27,6 +27,8 @@ var (
 	VideoConn         *swebsocket.ServerConn
 	KeyboardConn      *swebsocket.ServerConn
 	Remote_serverConn *swebsocket.ServerConn
+	//文件相关
+	File_serverConn *swebsocket.ServerConn
 	//键盘相关点对点操作
 	KeyboardP2PConn *webrtc.PeerConnection
 	KeyboardHandler *webrtc.DataChannel

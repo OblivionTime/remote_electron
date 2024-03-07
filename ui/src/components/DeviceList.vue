@@ -39,6 +39,7 @@
                     </div>
                     <div class="detail-btn">
                         <el-button type="primary" @click="StartRemote" style=" width: 100%;">远程控制</el-button>
+                        <el-button type="primary" @click="StartFile" style=" width: 100%;">文件传输</el-button>
 
                     </div>
                 </div>
@@ -83,8 +84,9 @@ const HandlerNode = (item) => {
         hide: true
     }
 }
+const ipcRenderer = window.require('electron').ipcRenderer;
 const StartRemote = () => {
-    ElMessageBox.confirm(`你确定要连接<span style='color:#F56C6C'>${DeviceDetail.value.device_id}</span>吗?`, "提示", {
+    ElMessageBox.confirm(`你确定要远程控制<span style='color:#F56C6C'>${DeviceDetail.value.device_id}</span>吗?`, "提示", {
         confirmButtonText: "确认",
         cancelButtonText: "取消",
         dangerouslyUseHTMLString: true,
@@ -96,6 +98,36 @@ const StartRemote = () => {
                 .then((res) => {
                     if (res.code == 0) {
                         router.push({ path: "/remote", query: { device: DeviceDetail.value.identificationCode, code: DeviceDetail.value.verificationCode } })
+                    } else {
+                        ElMessageBox.alert(res.msg, '警告', {
+                            confirmButtonText: '确定',
+                            showClose: false,
+                        })
+                    }
+                }).catch((err) => {
+                    console.log(err);
+                    ElMessageBox.alert('请检测网络是否连接,可以尝试重启应用', '出现错误', {
+                        confirmButtonText: '确定',
+                        showClose: false,
+
+                    })
+                });
+        })
+        .catch(() => { });
+}
+const StartFile=()=>{
+    ElMessageBox.confirm(`你确定要<span style='color:#F56C6C'>${DeviceDetail.value.device_id}</span>进行文件传输吗?`, "提示", {
+        confirmButtonText: "确认",
+        cancelButtonText: "取消",
+        dangerouslyUseHTMLString: true,
+
+    })
+        .then(() => {
+
+            ConnectRemoteDevice(DeviceDetail.value)
+                .then((res) => {
+                    if (res.code == 0) {
+                        ipcRenderer.send("createFileWindow",{ ...DeviceDetail.value})
                     } else {
                         ElMessageBox.alert(res.msg, '警告', {
                             confirmButtonText: '确定',
@@ -228,6 +260,7 @@ onMounted(() => {
 
                 .detail-btn {
                     margin-top: 40px;
+                    display: flex;
                     width: 100%;
 
                 }

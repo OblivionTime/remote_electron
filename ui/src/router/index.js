@@ -4,6 +4,11 @@ const router = createRouter({
   routes: [
     {
       path: "/",
+      name: "first",
+      component: () => import("@/views/First/index.vue"),
+    },
+    {
+      path: "/index",
       name: "index",
       component: () => import("@/views/Index/index.vue"),
     },{
@@ -15,6 +20,11 @@ const router = createRouter({
       path: "/controlledEnd",
       name: "controlledEnd",
       component: () => import("@/views/controlledEnd/index.vue"),
+    },
+    {
+      path: "/fileManage",
+      name: "fileManage",
+      component: () => import("@/views/fileManage/index.vue"),
     },
   ],
 });
