@@ -124,7 +124,7 @@ function initPC() {
                     showClose: false,
                     callback: () => {
                         release();
-                        router.push("/");
+                        router.push("/index");
                     },
 
                 })
@@ -186,7 +186,7 @@ const initVideoSocket = () => {
                     showClose: false,
                     callback: () => {
                         release();
-                        router.push("/");
+                        router.push("/index");
                     },
 
                 })
@@ -223,7 +223,7 @@ const closeConnect = () => {
                 }))
             }
 
-            router.push("/");
+            router.push("/index");
         })
         .catch(() => { });
 }
@@ -279,7 +279,7 @@ const initBlueToothSocket = () => {
                 showClose: false,
                 callback: () => {
 
-                    router.push("/");
+                    router.push("/index");
                 }
             })
         }

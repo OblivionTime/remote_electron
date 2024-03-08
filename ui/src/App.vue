@@ -218,7 +218,7 @@ onMounted(() => {
                                         confirmButtonText: '确定',
                                         showClose: false,
                                         callback: () => {
-                                            router.push("/");
+                                            router.push("/index");
                                         },
                                     })
                                     break
