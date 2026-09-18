@@ -3,9 +3,10 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"remote/file"
 	"remote/global"
 	"remote/model"
-	"remote/utils"
+	"remote/p2p"
 	"strings"
 	"time"
 
@@ -14,111 +15,104 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
-type FileRemoteReceive struct {
-	Op           string                     `json:"op,omitempty"`
-	ICEServers   []model.ICEServer          `json:"iceservers,omitempty"`
-	ICECandidate webrtc.ICECandidateInit    `json:"icecandidate,omitempty"`
-	SDP          *webrtc.SessionDescription `json:"sdp,omitempty"`
-	Device       string                     `json:"device,omitempty"`
-	Code         string                     `json:"code,omitempty"`
-	ErrMsg       string                     `json:"errmsg,omitempty"`
-}
-
-func HandlerFileShare(msg HandlerResult) {
+// HandlerFileShare 被控端收到控制端的文件共享请求：连上中转服务器，
+// 等控制端建好数据通道后接管文件收发。
+func HandlerFileShare(msg model.Signal) {
 	fmt.Println("接收到远程文件共享")
 	dialer := websocket.DefaultDialer
 	dialer.HandshakeTimeout = 30 * time.Second
 	remoteURL := strings.Replace(global.RemoteServerIP, "http://", "ws://", -1)
 	remoteURL = strings.Replace(remoteURL, "https://", "wss://", -1)
-	remote_serverCn, _, err := dialer.Dial(remoteURL+"/v1/api/remote/file_connect?device_id="+global.DeviceInfo.IdentificationCode+"&room="+msg.SendDevice, nil)
+	remoteConn, _, err := dialer.Dial(remoteURL+"/v1/api/remote/file_connect?device_id="+global.DeviceInfo.IdentificationCode+"&room="+msg.SendDevice, nil)
 	if err != nil {
 		return
 	}
-	FileRemoteConn, err := swebsocket.CreateConn(remote_serverCn, 1)
+	FileRemoteConn, err := swebsocket.CreateConn(remoteConn, 1)
 	if err != nil {
 		return
 	}
+
 	var dataChannel *webrtc.DataChannel
-	webrtcConn := utils.InitReceiveFileP2P(msg.ICEServers, func(d *webrtc.DataChannel) {
+	webrtcConn, err := p2p.NewFileReceiver(msg.ICEServers, func(d *webrtc.DataChannel) {
 		dataChannel = d
-		dataChannel.OnOpen(func() {
-			fmt.Println("被控端开启成功", dataChannel.Label(), dataChannel.ID())
-			go utils.HandlerFile(FileRemoteConn, dataChannel)
+		d.OnOpen(func() {
+			fmt.Println("被控端开启成功", d.Label(), d.ID())
+			// 队列消费者进程内只起一个，这里只把通道换成当前会话的
+			file.SetSender(d, FileRemoteConn)
+			file.StartWorker()
 		})
-		dataChannel.OnBufferedAmountLow(func() {
-			select {
-			case data := <-utils.DataToBeSent:
-				dataChannel.Send(data)
-			default:
-				fmt.Println("No data available to send")
+		d.OnMessage(func(dataMsg webrtc.DataChannelMessage) {
+			var res model.ClientFileReceive
+			json.Unmarshal(dataMsg.Data, &res)
+			// 续传 / 校验握手回执，不能当普通业务消息处理
+			if file.IsAck(res.FileOp) {
+				file.Ack(res)
+				return
 			}
-		})
-		dataChannel.OnMessage(func(dataMsg webrtc.DataChannelMessage) {
-			var msg model.ClientFileReceive
-			json.Unmarshal(dataMsg.Data, &msg)
-			switch msg.Op {
+			switch res.Op {
 			case "remote_ls":
-				utils.SendMessage(model.ClientFileResponse{
-					Op:             msg.Op,
-					RemoteFileList: utils.GetAllFiles(msg.RemotePath),
-				}, dataChannel)
+				p2p.SendJSON(d, model.ClientFileResponse{
+					Op:             res.Op,
+					RemoteFileList: file.GetAllFiles(res.RemotePath),
+				})
 			case "remote_basic":
-				utils.SendMessage(model.ClientFileResponse{
-					Op:              msg.Op,
-					RemoteBasicList: utils.GetBasicDir(),
-				}, dataChannel)
+				p2p.SendJSON(d, model.ClientFileResponse{
+					Op:              res.Op,
+					RemoteBasicList: file.GetBasicDir(),
+				})
 			case "upload":
-				utils.SenderHandlerFile(msg, dataChannel, FileRemoteConn)
+				file.SenderHandlerFile(res, d, FileRemoteConn)
 			case "download":
-				HandlerDownload(msg, dataChannel)
+				HandlerDownload(res, d)
+			case "pause", "cancel":
+				// 下载的发送端在本机，收到控制端的暂停/取消就停
+				file.Stop(res.RemotePath)
+			case "fs_mkdir", "fs_delete":
+				// 控制端代它操作本机文件
+				if err := file.Apply(res); err != nil {
+					p2p.SendJSON(d, model.ClientFileResponse{Op: "error", ErrMsg: err.Error()})
+					return
+				}
+				p2p.SendJSON(d, model.ClientFileResponse{
+					Op:             "remote_ls",
+					RemoteFileList: file.GetAllFiles(res.RemotePath),
+				})
 			}
 		})
-		dataChannel.OnClose(func() {
+		d.OnClose(func() {
+			file.ClearSender(d)
 			dataChannel = nil
 		})
 	})
-	webrtcConn.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		if s >= 4 {
-			fmt.Printf("Peer Connection State has changed: %s\n", s.String())
-			if dataChannel != nil {
-				fmt.Printf("即将断开'%s'-'%d' \n", dataChannel.Label(), dataChannel.ID())
-			}
-			fmt.Println("连接断开", s.String())
-			if dataChannel != nil {
-				dataChannel.Close()
-			}
-		}
-	})
-	webrtcConn.OnICECandidate(func(c *webrtc.ICECandidate) {
-		if c == nil {
-			return
-		}
-		global.CandidatesMux.Lock()
-		defer global.CandidatesMux.Unlock()
-		FileRemoteConn.Send <- FileRemoteReceive{
-			Op:           "candidate",
-			SDP:          nil,
-			ICECandidate: c.ToJSON(),
-		}
-	})
-	FileRemoteConn.Send <- map[string]string{
-		"op": "new_peer",
+	if err != nil {
+		fmt.Println("初始化文件 P2P 失败", err)
+		return
 	}
+
+	p2p.WatchState(webrtcConn, "file", func() {
+		if dataChannel != nil {
+			dataChannel.Close()
+		}
+	})
+	p2p.OnCandidate(webrtcConn, func(c webrtc.ICECandidateInit) {
+		FileRemoteConn.Send <- model.FileSignal{Op: "candidate", ICECandidate: c}
+	})
+
+	FileRemoteConn.Send <- model.FileSignal{Op: "new_peer"}
 	FileRemoteConn.Handle(func(remoteMsg []byte, conn *swebsocket.ServerConn) {
-		var remoteRes FileRemoteReceive
+		var remoteRes model.FileSignal
 		json.Unmarshal(remoteMsg, &remoteRes)
 		switch remoteRes.Op {
 		case "disconnect":
 			FileRemoteConn.CloseConn()
 		case "offer":
 			if webrtcConn != nil {
-				webrtcConn.SetRemoteDescription(*remoteRes.SDP)
-				answerData, _ := webrtcConn.CreateAnswer(nil)
-				webrtcConn.SetLocalDescription(answerData)
-				FileRemoteConn.Send <- FileRemoteReceive{
-					Op:  "answer",
-					SDP: &answerData,
+				answer, err := p2p.NewAnswer(webrtcConn, remoteRes.SDP)
+				if err != nil {
+					fmt.Println("创建文件 answer 失败", err)
+					return
 				}
+				FileRemoteConn.Send <- model.FileSignal{Op: "answer", SDP: answer}
 			}
 		case "candidate":
 			if webrtcConn != nil {
@@ -126,28 +120,26 @@ func HandlerFileShare(msg HandlerResult) {
 			}
 		}
 	})
+
 	FileRemoteConn.WriteReadLoop()
 	fmt.Println("被控端连接结束")
 	FileRemoteConn = nil
-	if FileRemoteConn != nil {
-		FileRemoteConn.CloseConn()
-	}
 	if webrtcConn != nil {
-		webrtcConn = nil
+		webrtcConn.Close()
 	}
 	if dataChannel != nil {
+		file.ClearSender(dataChannel)
 		dataChannel.Close()
 	}
-	if utils.FileList != nil {
-		close(utils.FileList)
-		utils.FileList = nil
-	}
-	utils.FileList = make(chan model.ClientFileReceive, 1024)
+	// FileList 与消费者是进程级常驻的，这里不能关掉/重建：
+	// 换掉队列会让正在处理旧队列的消费者永久丢任务，新任务没人接。
 }
 
 func HandlerDownload(msg model.ClientFileReceive, dataChannel *webrtc.DataChannel) {
 	fmt.Println("接收到数据", msg.Op, msg.FilePath, msg.RemotePath, msg.FileSize)
 	if dataChannel != nil {
-		utils.FileList <- msg
+		// 重试 / 继续时清掉上次的暂停标记
+		file.ClearStop(msg.RemotePath)
+		file.FileList <- msg
 	}
 }

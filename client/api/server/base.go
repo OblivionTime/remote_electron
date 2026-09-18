@@ -67,7 +67,7 @@ func Connect(ctx *gin.Context) {
 					global.KeyboardHandler.Send(succesInfo)
 				}
 			} else {
-				global.Remote_serverConn.Send <- client.HandlerResult{
+				global.Remote_serverConn.Send <- model.Signal{
 					Op:          res.Name,
 					Data:        res.Data,
 					Device:      res.Device,
@@ -105,7 +105,7 @@ func ConnectServer(ctx *gin.Context) {
 
 	}
 	remoteURL := fmt.Sprintf("%s//%s/v1/api/remote/code?device=%s", protocol, msg.RemoteURL, device)
-	client := shttp.NewClient()
+	client := shttp.NewClient(false)
 	err = client.GET(remoteURL, nil)
 	if err != nil {
 		response.FailWithMessage("服务器连接失败", ctx)
@@ -143,7 +143,7 @@ type ConnectDevice struct {
 // 获取设备列表
 func ConnectedList(ctx *gin.Context) {
 	remoteURL := fmt.Sprintf("%s/v1/api/remote/device_list?device=%s", global.RemoteServerIP, global.DeviceInfo.IdentificationCode)
-	client := shttp.NewClient()
+	client := shttp.NewClient(false)
 	err := client.GET(remoteURL, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -183,7 +183,7 @@ func CheckDeviceOnline(ctx *gin.Context) {
 		return
 	}
 	remoteURL := fmt.Sprintf("%s/v1/api/remote/online?code=%s", global.RemoteServerIP, global.DeviceInfo.IdentificationCode)
-	client := shttp.NewClient()
+	client := shttp.NewClient(false)
 	err := client.POST(remoteURL, msg)
 	if err != nil {
 		fmt.Println(err)

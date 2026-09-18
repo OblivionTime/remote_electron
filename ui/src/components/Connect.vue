@@ -1,65 +1,53 @@
 <template>
-    <div class="title">
-        允许控制本设备
+    <div class="card">
+        <div class="card-title">本设备</div>
+        <div class="info">
+            <div class="info-item">
+                <div class="label">设备识别码</div>
+                <div class="value">
+                    {{ device.deviceInfo.identificationCode || '-------' }}
+                    <el-icon v-show="device.deviceInfo.identificationCode" @click="copyText">
+                        <DocumentCopy />
+                    </el-icon>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="label">验证码</div>
+                <div class="value">
+                    {{ !hide && device.deviceInfo.verificationCode ? device.deviceInfo.verificationCode : '------' }}
+                    <el-icon v-show="device.deviceInfo.verificationCode" @click="hide = !hide">
+                        <View v-if="hide" />
+                        <Hide v-else />
+                    </el-icon>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="info">
-        <div class="info-left">
-            <div class="info-title">本设备识别码<el-icon v-show="device.deviceInfo.identificationCode"
-                    style="margin-left:5px; cursor: pointer;" @click="copyText">
-                    <DocumentCopy />
-                </el-icon></div>
-            <div class="info-desc">{{ device.deviceInfo.identificationCode ? device.deviceInfo.identificationCode :
-                '-------' }}
-            </div>
-        </div>
-        <div class="info-right">
-            <div class="info-title">验证码<el-icon v-show="device.deviceInfo.verificationCode"
-                    style="margin-left:5px; cursor: pointer;">
-                    <View v-if="hide" @click="hide = false" />
-                    <Hide v-if="!hide" @click="hide = true" />
-                </el-icon></div>
-            <div class="info-desc">{{ !hide && device.deviceInfo.verificationCode ? device.deviceInfo.verificationCode :
-                '------' }}
-            </div>
-        </div>
-    </div>
-    <div class="remote">
-        <div class="remote-title">
-            远程控制设备
-        </div>
-        <div class="remote-input">
-            <div class="input">
-                <el-input v-model="formData.identificationCode" oninput="value=value.replace(/[^0-9]/g, '')"
-                    placeholder="请输入识别码" style="height:50px;flex:3" maxlength="9">
-                </el-input>
-                <el-input v-model="formData.verificationCode" placeholder="请输入验证码" style="height:50px;flex:1"
-                    maxlength="6">
-                </el-input>
-            </div>
-            <div class="btn">
-                <el-button :disabled="!formData.identificationCode || !formData.verificationCode" type="primary"
-                    style="height:50px;width:120px" @click="Connect" :loading="tryConnect">连接</el-button>
-            </div>
-        </div>
-        <div style="margin-top:10px">
-            <el-radio-group v-model="mode">
-                <el-radio :label="'remote'">远程控制</el-radio>
-                <el-radio :label="'file'">文件传输</el-radio>
-            </el-radio-group>
-        </div>
 
+    <div class="card">
+        <div class="card-title">远程控制设备</div>
+        <div class="form">
+            <el-input v-model="formData.identificationCode" oninput="value=value.replace(/[^0-9]/g, '')"
+                placeholder="请输入识别码" maxlength="9" />
+            <el-input v-model="formData.verificationCode" placeholder="请输入验证码" maxlength="6" />
+            <el-button :disabled="!formData.identificationCode || !formData.verificationCode" type="primary"
+                :loading="tryConnect" @click="Connect">连接</el-button>
+        </div>
+        <el-radio-group v-model="mode" class="mode">
+            <el-radio :label="'remote'">远程控制</el-radio>
+            <el-radio :label="'file'">文件传输</el-radio>
+        </el-radio-group>
     </div>
 </template>
 
 <script setup>
-import { Eleme } from '@element-plus/icons-vue'
-
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import clipboard3 from "vue-clipboard3"
 const { toClipboard } = clipboard3();
 import { useDeviceStore } from "@/store/index";
 const device = useDeviceStore();
+import { ipcRenderer } from "@/utils/electron";
 const router = useRouter()
 import { ConnectRemoteDevice } from '@/api/info.js';
 let hide = ref(false)
@@ -78,7 +66,7 @@ const Connect = () => {
             type: 'warning',
         })
     }
-    if (formData.value.identificationCode?.length == device.deviceInfo.identificationCode) {
+    if (formData.value.identificationCode == device.deviceInfo.identificationCode) {
         return ElMessage({
             showClose: true,
             message: '不能输入自己的识别码!!!',
@@ -116,7 +104,6 @@ const Connect = () => {
         })
 
 }
-const ipcRenderer = window.require('electron').ipcRenderer;
 
 const copyText = () => {
     toClipboard(device.deviceInfo.identificationCode).then(() => {
@@ -140,76 +127,67 @@ const copyText = () => {
 </script>
 
 <style lang="scss" scoped>
-.title {
-    -webkit-app-region: no-drag;
-    padding: 12vh 100px 5px 40px;
-    font-size: 22px;
-    margin-bottom: 50px;
-}
-
 .info {
-    -webkit-app-region: no-drag;
-    padding: 0 100px 0 40px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    gap: 12px;
 
-    .info-left {
-        .info-title {
-            color: #999999;
-            font-size: 14px;
-            margin-bottom: 20px;
+    .info-item {
+        flex: 1;
+        min-width: 0;
+        padding: 14px 16px;
+        background: #f7f9fc;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+
+        .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
         }
 
-        .info-desc {
-            font-size: 25px;
+        .value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 22px;
+            font-weight: 700;
             letter-spacing: 2px;
-            font-weight: bold;
-            color: #67C23A;
-        }
-    }
+            color: var(--text);
 
-    .info-right {
-        width: 120px;
+            .el-icon {
+                font-size: 15px;
+                letter-spacing: 0;
+                cursor: pointer;
+                color: var(--text-secondary);
+                transition: color .2s;
 
-        .info-title {
-            color: #999999;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .info-desc {
-            font-size: 25px;
-            letter-spacing: 2px;
-            font-weight: bold;
+                &:hover {
+                    color: var(--primary);
+                }
+            }
         }
     }
 }
 
-.remote {
-    padding: 12vh 20px 5px 40px;
-    -webkit-app-region: no-drag;
+.form {
+    display: flex;
+    gap: 10px;
 
-    .remote-title {
-        font-size: 22px;
-        margin-bottom: 20px;
+    .el-input:nth-child(1) {
+        flex: 3;
     }
 
-    .remote-input {
-        display: flex;
-        gap: 10px;
-        height: 50px;
-
-        .input {
-            flex: 6;
-            height: 50px;
-            display: flex;
-        }
-
-        .btn {
-            flex: 1;
-
-        }
+    .el-input:nth-child(2) {
+        flex: 1;
     }
+
+    .el-button {
+        width: 110px;
+        flex-shrink: 0;
+    }
+}
+
+.mode {
+    margin-top: 16px;
 }
 </style>

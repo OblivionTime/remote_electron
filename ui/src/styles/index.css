@@ -1,0 +1,78 @@
+:root {
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --border: #ebeef5;
+  --text: #1f2d3d;
+  --text-secondary: #8a94a6;
+  --primary: #409eff;
+  --success: #67c23a;
+  --danger: #f56c6c;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+/* 注意：不能给 body 设背景色，否则透明窗口（悬浮球）会失去透明效果 */
+body {
+  color: var(--text);
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 卡片 */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.card + .card {
+  margin-top: 16px;
+}
+
+/* 卡片内的小标题 */
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.el-overlay-message-box {
+  -webkit-app-region: no-drag;
+}

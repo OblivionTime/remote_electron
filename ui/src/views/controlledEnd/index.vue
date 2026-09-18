@@ -7,10 +7,8 @@
 </template>
 
 <script setup>
+import { ipcRenderer, setWindowPosition } from "@/utils/electron";
 const dropdown1 = ref()
-const remote = window.require("electron").remote;
-const ipcRenderer = window.require("electron").ipcRenderer;
-const win = remote.getCurrentWindow();
 
 onMounted(() => {
     //开启剪贴板监听
@@ -35,7 +33,7 @@ onMounted(() => {
         document.removeEventListener('mousemove', moveEvent)
     });
     function moveEvent(e) {
-        win.setPosition(e.screenX - biasX, e.screenY - biasY)
+        setWindowPosition(e.screenX - biasX, e.screenY - biasY)
     }
 
 
@@ -58,7 +56,9 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    /* 初始边框颜色设为透明 */
+    background: #fff;
+    border: 2px solid var(--primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
     user-select: none;
     // -webkit-app-region: drag;
 

@@ -17,11 +17,10 @@
     ],
     "compression": "maximum",
     "asar": true,
+    "npmRebuild": false,
+    "electronDist": "node_modules/electron/dist",
     "directories": {
         "output": "build"
-    },
-    "electronDownload": {
-        "mirror": "https://npm.taobao.org/mirrors/electron/"
     },
     "win": {
         "icon": "./src/assets/logo.png",

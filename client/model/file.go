@@ -17,6 +17,14 @@ type ClientFileReceive struct {
 	FileSize    int64  `json:"filesize,omitempty"`
 	FileContent []byte `json:"filecontent,omitempty"`
 	Offset      int    `json:"offset,omitempty"`
+	// 内容校验（CRC32C）：start_ack 回执已有内容、done 回执整文件
+	Crc    uint32 `json:"crc,omitempty"`
+	ErrMsg string `json:"errmsg,omitempty"`
+
+	// UI 发起的文件系统操作（fs_mkdir / fs_delete）
+	Side   string   `json:"side,omitempty"`   // local | remote
+	Target string   `json:"target,omitempty"` // 新建目录的完整路径
+	Paths  []string `json:"paths,omitempty"`  // 待删除的路径列表
 	//获取本地目录下所有文件和远程目录所有文件
 	LocalPath  string `json:"localpath,omitempty"`
 	RemotePath string `json:"remotepath,omitempty"`

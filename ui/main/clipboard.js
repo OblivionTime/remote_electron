@@ -1,5 +1,4 @@
 const { clipboard } = require("electron");
-const { formProps } = require("element-plus");
 
 let timer = null;
 let clipboardContent = "";
@@ -10,7 +9,7 @@ function sendData(data, MainWindow) {
 }
 function getClipboardFiles() {
   const clipboardEx = require("electron-clipboard-ex");
-  filePath = clipboardEx.readFilePaths();
+  const filePath = clipboardEx.readFilePaths();
   if (filePath.length != 0) {
     if (filePath.join(",") != fileList.join(",")) {
       clipboardContent = "";

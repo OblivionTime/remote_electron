@@ -8,23 +8,71 @@ const {
   screen,
   ipcMain,
   dialog,
+  desktopCapturer,
 } = require("electron");
 const { startWatchClipboard, stopWatchClipboard } = require("./clipboard.js");
 //#region 启动后端项目 ------------------------------------------------------------
 const { join, dirname } = require("path");
 const { spawn } = require("child_process");
+const fs = require("fs");
 let exampleProcess;
 
 //#endregion -----------------------------------------------------------
 
 const { format } = require("url");
-// 屏蔽安全警告
-// ectron Security Warning (Insecure Content-Security-Policy)
-process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 
 let MainWindow;
 let MainTray;
+let FloatingWin = null;
+let FileWindow;
 const icon = nativeImage.createFromPath(join(__dirname, "logo.png"));
+
+//#region 关闭行为 / 退出 ------------------------------------------------------------
+// ask = 每次询问；hide = 隐藏到托盘；quit = 直接退出
+const CLOSE_ACTIONS = ["ask", "hide", "quit"];
+let closeAction = "ask";
+let isQuitting = false;
+
+const closeActionFile = () => join(app.getPath("userData"), "close-action.json");
+
+const loadCloseAction = () => {
+  try {
+    const saved = JSON.parse(fs.readFileSync(closeActionFile(), "utf8")).action;
+    closeAction = CLOSE_ACTIONS.includes(saved) ? saved : "ask";
+  } catch (error) {
+    closeAction = "ask";
+  }
+};
+
+const saveCloseAction = (action) => {
+  closeAction = CLOSE_ACTIONS.includes(action) ? action : "ask";
+  try {
+    fs.writeFileSync(closeActionFile(), JSON.stringify({ action: closeAction }));
+  } catch (error) {
+    console.error("保存关闭行为失败", error);
+  }
+};
+
+const hideMainWindow = () => {
+  if (!MainWindow) return;
+  MainWindow.hide();
+  MainWindow.setSkipTaskbar(true);
+};
+
+const showMainWindow = () => {
+  if (!MainWindow) return;
+  if (MainWindow.isMinimized()) MainWindow.restore();
+  MainWindow.show();
+  MainWindow.setSkipTaskbar(false);
+  MainWindow.focus();
+};
+
+const quitApp = () => {
+  isQuitting = true;
+  app.quit();
+};
+//#endregion -----------------------------------------------------------
+
 //#region ipMain相关操作 ------------------------------------------------------------
 ipcMain.on("showFloating", () => {
   if (!FloatingWin) {
@@ -35,11 +83,9 @@ ipcMain.on("closeFloating", () => {
   if (FloatingWin) {
     FloatingWin.close();
     FloatingWin = null;
-    MainWindow.show();
-    MainTray.destroy();
-    MainTray = null;
-    CreateMainTray();
   }
+  //被控结束，恢复主界面
+  showMainWindow();
 });
 ipcMain.on("startWatchClipboard", (e, sender) => {
   stopWatchClipboard();
@@ -72,11 +118,10 @@ ipcMain.on("createSuspensionMenu", (e) => {
           if (response.response === 1) {
             FloatingWin.close();
             FloatingWin = null;
-            MainWindow.show();
-            MainTray.destroy();
-            MainTray = null;
-            CreateMainTray();
-            MainWindow.webContents.send("video_disconnect", "发送成功");
+            showMainWindow();
+            if (MainWindow) {
+              MainWindow.webContents.send("video_disconnect", "发送成功");
+            }
           }
         });
       },
@@ -84,6 +129,23 @@ ipcMain.on("createSuspensionMenu", (e) => {
   ]);
   rightM.popup({});
 });
+// desktopCapturer 在 Electron 34 只能用于主进程，渲染进程通过 IPC 取屏幕源 id
+ipcMain.handle("get-screen-source", async () => {
+  const sources = await desktopCapturer.getSources({ types: ["screen"] });
+  return sources.length > 0 ? sources[0].id : null;
+});
+ipcMain.handle("get-close-action", () => closeAction);
+ipcMain.handle("set-close-action", (e, action) => {
+  saveCloseAction(action);
+  return closeAction;
+});
+const senderWindow = (e) => BrowserWindow.fromWebContents(e.sender);
+ipcMain.on("window-minimize", (e) => { senderWindow(e)?.minimize(); });
+ipcMain.on("window-close", (e) => { senderWindow(e)?.close(); });
+ipcMain.on("window-restore", (e) => { senderWindow(e)?.restore(); });
+ipcMain.on("window-set-size", (e, w, h) => { senderWindow(e)?.setSize(w, h); });
+ipcMain.on("window-center", (e) => { senderWindow(e)?.center(); });
+ipcMain.on("window-set-position", (e, x, y) => { senderWindow(e)?.setPosition(x, y); });
 
 //#endregion -----------------------------------------------------------
 //#region 主窗口 ------------------------------------------------------------
@@ -97,15 +159,51 @@ const createWindow = () => {
     minWidth: 750,
     minHeight: 510,
     center: true,
-    useContenRtSize: true,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
-      enableRemoteModule: true,
       contextIsolation: false,
+      additionalArguments: ["--window-role=main"],
     },
   });
   CreateMainTray();
+  MainWindow.on("close", async (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+
+    if (closeAction === "quit") {
+      quitApp();
+      return;
+    }
+    if (closeAction === "hide") {
+      hideMainWindow();
+      return;
+    }
+
+    const { response, checkboxChecked } = await dialog.showMessageBox(MainWindow, {
+      type: "question",
+      buttons: ["隐藏到托盘", "退出程序", "取消"],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+      title: "关闭窗口",
+      message: "关闭窗口后要做什么？",
+      detail: "隐藏到托盘：程序继续在后台运行，仍可被远程控制\n退出程序：完全退出，不再响应远程控制",
+      checkboxLabel: "记住我的选择（可在「高级设置 - 窗口行为」中修改）",
+      checkboxChecked: true,
+    });
+
+    if (response === 2) return;
+
+    const action = response === 1 ? "quit" : "hide";
+    if (checkboxChecked) saveCloseAction(action);
+
+    if (action === "quit") {
+      quitApp();
+    } else {
+      hideMainWindow();
+    }
+  });
   MainWindow.webContents.on("did-finish-load", () => {
     MainWindow.webContents.send("connect", "发送成功");
   });
@@ -126,33 +224,25 @@ const createWindow = () => {
   }
 };
 const CreateMainTray = () => {
+  if (MainTray) return;
   MainTray = new Tray(icon);
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: "主界面", click: () => MainWindow.show() },
-    { label: "退出", click: () => app.exit() },
+    { label: "主界面", click: () => showMainWindow() },
+    { label: "退出", click: () => quitApp() },
   ]);
   MainTray.on("double-click", () => {
-    MainWindow.show();
+    showMainWindow();
   });
   MainTray.setToolTip("山与路远程控制");
   MainTray.setContextMenu(contextMenu);
-  MainWindow.on("close", (event) => {
-    MainWindow.hide();
-    MainWindow.setSkipTaskbar(true);
-    event.preventDefault();
-  });
 };
 //#endregion -----------------------------------------------------------
 
 //#region 悬浮球相关 ------------------------------------------------------------
-let FloatingWin = null;
 const createFloatingWindow = () => {
-  MainWindow.hide();
-  if (MainTray) {
-    MainTray.destroy();
-    MainTray = null;
-  }
+  //被控期间隐藏主界面，只留悬浮球
+  hideMainWindow();
   FloatingWin = new BrowserWindow({
     frame: false,
     width: 80,
@@ -163,14 +253,13 @@ const createFloatingWindow = () => {
     maxWidth: 80,
     maxHeight: 300,
     resizable: false,
-    useContenRtSize: true,
     autoHideMenuBar: true,
     transparent: true, // 设置为透明
     type: "toolbar",
     webPreferences: {
       nodeIntegration: true,
-      enableRemoteModule: true,
       contextIsolation: false,
+      additionalArguments: ["--window-role=float"],
     },
   });
   const { left, top } = {
@@ -180,41 +269,6 @@ const createFloatingWindow = () => {
   FloatingWin.setPosition(left, top); //设置悬浮球位置
 
   FloatingWin.setMaximizable(false); // 禁止双击最大化
-  MainTray = new Tray(icon);
-
-  const contextMenu = Menu.buildFromTemplate([
-    { label: "显示", click: () => FloatingWin.show() },
-    {
-      label: "退出",
-      click: () => {
-        const options = {
-          type: "question",
-          buttons: ["取消", "确定"],
-          defaultId: 1,
-          title: "警告",
-          message: "点击退出后,目标将无法在远控当前设备",
-          detail: "",
-        };
-
-        dialog.showMessageBox(null, options).then((response) => {
-          if (response.response === 1) {
-            FloatingWin.close();
-            FloatingWin = null;
-            MainWindow.show();
-            MainTray.destroy();
-            MainTray = null;
-            CreateMainTray();
-            MainWindow.webContents.send("video_disconnect", "发送成功");
-          }
-        });
-      },
-    },
-  ]);
-  MainTray.on("double-click", () => {
-    FloatingWin.show();
-  });
-  MainTray.setToolTip("你当前正在被控制中...");
-  MainTray.setContextMenu(contextMenu);
 
   // development模式
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -231,7 +285,6 @@ const createFloatingWindow = () => {
 };
 //#endregion -----------------------------------------------------------
 //#region 文件相关 ------------------------------------------------------------
-let FileWindow;
 ipcMain.on("closeFileDialog", () => {
   if (FileWindow) {
     FileWindow.close();
@@ -243,25 +296,27 @@ ipcMain.on("createFileWindow", (e, item) => {
   createFileWindow(identificationCode, verificationCode);
 });
 const createFileWindow = (device, code) => {
+  // 已经开过就复用，不再开第二个
   if (FileWindow) {
-    MainWindow.webContents.send("errmsg", "目前只支持远程一个目标进行传输文件");
+    if (FileWindow.isMinimized()) FileWindow.restore();
+    FileWindow.show();
+    FileWindow.focus();
     return;
   }
   FileWindow = new BrowserWindow({
-    width: 850,
+    width: 1100,
     useContentSize: true,
     icon: icon,
-    height: 610,
-    minWidth: 850,
-    minHeight: 610,
+    height: 760,
+    minWidth: 940,
+    minHeight: 620,
     center: true,
     title: "文件传输",
-    useContenRtSize: true,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
-      enableRemoteModule: true,
       contextIsolation: false,
+      additionalArguments: ["--window-role=file"],
     },
   });
   FileWindow.on("close", (event) => {
@@ -284,19 +339,38 @@ const createFileWindow = (device, code) => {
   }
 };
 //#endregion -----------------------------------------------------------
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-app.on("window-all-closed", () => {
-  try {
-    stopWatchClipboard();
-    if (exampleProcess) {
-      process.kill(exampleProcess.pid);
+// 已经有实例在跑时就复用（聚焦已有窗口），不再开第二个
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (FloatingWin) {
+      FloatingWin.show();
+      return;
     }
-  } catch (error) {}
-  if (process.platform !== "darwin") app.quit();
-});
+    showMainWindow();
+  });
+
+  app.on("before-quit", () => {
+    isQuitting = true;
+  });
+
+  app.whenReady().then(() => {
+    loadCloseAction();
+    createWindow();
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+
+  app.on("window-all-closed", () => {
+    try {
+      stopWatchClipboard();
+      if (exampleProcess) {
+        process.kill(exampleProcess.pid);
+      }
+    } catch (error) {}
+    if (process.platform !== "darwin") app.quit();
+  });
+}

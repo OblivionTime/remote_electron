@@ -1,6 +1,6 @@
 package response
 
-//修改成功
+// 修改成功
 func UpdateRequestClient(ts, msg string) *Response {
 	return &Response{
 		Code:      0,

@@ -5,6 +5,7 @@ import { createPinia } from "pinia"
 const pinia = createPinia()
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import '@/styles/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { debounce } from 'lodash';
 const app = createApp(App)

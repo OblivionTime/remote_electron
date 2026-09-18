@@ -5,34 +5,27 @@ import (
 	"fmt"
 	"remote/ckeyboard"
 	"remote/global"
+	"remote/input"
+	"remote/model"
+	"remote/p2p"
 	"remote/utils"
 
 	"gitee.com/solidone/sutils/swebsocket"
 	logger "github.com/OblivionTime/simple-logger"
 	"github.com/gin-gonic/gin"
-	"github.com/go-vgo/robotgo"
 )
 
+// Request 是 Electron UI 通过 /keyboard_connect 发来的指令
 type Request struct {
-	Operation string   `json:"operation"`
-	RemoteURL string   `json:"remote_url,omitempty"`
-	Status    bool     `json:"status,omitempty"`
-	Mode      string   `json:"mode,omitempty"`
-	Data      SendData `json:"data,omitempty"`
+	Operation string               `json:"operation"`
+	RemoteURL string               `json:"remote_url,omitempty"`
+	Status    bool                 `json:"status,omitempty"`
+	Mode      string               `json:"mode,omitempty"`
+	Data      model.InputOperation `json:"data,omitempty"`
 }
 
-type SendData struct {
-	Method        string   `json:"method"`
-	Arg1          int      `json:"arg1,omitempty"`
-	Arg2          int      `json:"arg2,omitempty"`
-	Key           string   `json:"key,omitempty"`
-	Width         float64  `json:"width,omitempty"`
-	Height        float64  `json:"height,omitempty"`
-	ClipboardType string   `json:"clipboard_type,omitempty"`
-	ClipboardData []string `json:"clipboard_data,omitempty"`
-}
-
-// 建立键盘的websocket
+// ConnectKeyboard 建立键盘通道：本机物理按键经钩子捕获后，
+// 与 UI 发来的键鼠指令一起走数据通道发往被控端。
 func ConnectKeyboard(ctx *gin.Context) {
 	wsConn, err := global.Upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
@@ -44,9 +37,11 @@ func ConnectKeyboard(ctx *gin.Context) {
 		global.KeyboardConn = nil
 	}
 	global.KeyboardConn, _ = swebsocket.CreateConn(wsConn, 1)
+
 	user := utils.GenerateRandomString()
-	global.KeyDownList[user] = make(chan string, 1024)
-	global.KeyRelseList[user] = make(chan string, 1024)
+	global.AddKeyboardSession(user)
+	downCh, upCh, _ := global.KeyboardChannels(user)
+
 	go func() {
 		defer func() {
 			if global.KeyboardConn != nil {
@@ -55,36 +50,26 @@ func ConnectKeyboard(ctx *gin.Context) {
 			}
 			utils.RecoverPanic()
 		}()
-		var data SendData
+		var data model.InputOperation
 		for {
-			if global.KeyboardConn == nil || global.Remote_serverConn == nil {
-				return
-			} else if (global.Remote_serverConn != nil && global.Remote_serverConn.Flag) || (global.KeyboardConn != nil && global.KeyboardConn.Flag) {
-				return
-			} else if global.KeyboardHandler == nil {
+			if global.KeyboardConn == nil || global.Remote_serverConn == nil || global.KeyboardHandler == nil {
 				return
 			}
 			select {
-			case key := <-global.KeyDownList[user]:
-				data = SendData{
-					Method: "KeyDown",
-					Key:    key,
-				}
-
-			case key := <-global.KeyRelseList[user]:
-				data = SendData{
-					Method: "KeyRelease",
-					Key:    key,
-				}
+			case key := <-downCh:
+				data = model.InputOperation{Method: "KeyDown", Key: key}
+			case key := <-upCh:
+				data = model.InputOperation{Method: "KeyRelease", Key: key}
 			}
-			succesInfo, _ := json.Marshal(data)
 			if global.Remote_serverConn != nil && global.KeyboardHandler != nil {
-				global.KeyboardHandler.Send(succesInfo)
+				p2p.SendJSON(global.KeyboardHandler, data)
 			}
 		}
 	}()
+
 	ckeyboard.ChangeUser(user)
 	go ckeyboard.ListenKeyboard()
+
 	global.KeyboardConn.Handle(func(res []byte, conn *swebsocket.ServerConn) {
 		var msg Request
 		json.Unmarshal(res, &msg)
@@ -98,22 +83,21 @@ func ConnectKeyboard(ctx *gin.Context) {
 				global.OpenWatch = false
 			}
 		case "send":
-			succesInfo, _ := json.Marshal(msg.Data)
 			if global.Remote_serverConn != nil && global.KeyboardHandler != nil {
-				global.KeyboardHandler.Send(succesInfo)
+				p2p.SendJSON(global.KeyboardHandler, msg.Data)
 			}
 		}
 	})
 
 	global.KeyboardConn.WriteReadLoop()
-	//释放掉所有资源
-	realse()
+	releasePressedKeys()
 	global.KeyboardConn = nil
 }
-func realse() {
+
+// releasePressedKeys 会话结束时松开可能仍被按住的修饰键
+func releasePressedKeys() {
 	global.OpenWatch = false
-	robotgo.KeyUp("lalt")
-	robotgo.KeyUp("ralt")
-	robotgo.KeyUp("lctrl")
-	robotgo.KeyUp("rctrl")
+	for _, k := range []string{"lalt", "ralt", "lctrl", "rctrl"} {
+		input.KeyUp(k)
+	}
 }

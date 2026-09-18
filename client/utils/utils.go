@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"remote/global"
 
@@ -15,6 +17,16 @@ func Decrypt(text []byte, data interface{}) {
 	json.Unmarshal(res, data)
 }
 
+// GenerateRandomString 生成一次键盘会话的标识
+func GenerateRandomString() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b)[:16]
+}
+
+// CloseAllConnect 断开所有连接并释放 P2P 资源
 func CloseAllConnect() {
 	if global.ClientConn != nil {
 		global.ClientConn.Send <- map[string]string{"operation": "disconnect"}

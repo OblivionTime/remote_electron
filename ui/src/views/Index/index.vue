@@ -1,51 +1,51 @@
 <template>
-    <div class="content">
-        <div class="main-left">
-            <div class="version">
-                山与路远程控制 V1.0.0
-            </div>
-            <div class="operation-list">
-                <div class="operation-item" v-for="item in Menu" :key="item.action" @click="active = item.action"
-                    :class="active == item.action ? 'operation-item-active' : ''">
-                    <div><img :src="item.icon" alt=""> </div>
-                    <span class="desc">{{ item.name }}</span>
-                </div>
-
-            </div>
-            <div class="logo">
+    <div class="app">
+        <aside class="sidebar card">
+            <div class="brand">
                 <img src="@/assets/logo.png" alt="">
-
-                <div>山与路远程控制</div>
-            </div>
-            <div class="online">
-                <div class="status" :class="deivce.online.status ? 'success' : 'error'"></div>
-                <div class="desc">{{ deivce.online.message }}</div>
-            </div>
-        </div>
-        <div class="main-right">
-            <div class="header">
-                <div class="tip">
-                    免责声明:本作品为开源项目,请勿用于商业用途
+                <div>
+                    <div class="name">山与路远程控制</div>
+                    <div class="version">V1.0.0</div>
                 </div>
-                <div class="btns">
-                    <div class="semi" @click="minSize">
-                        <el-icon style="font-size: 25px;">
+            </div>
+
+            <nav class="nav">
+                <div class="nav-item" v-for="item in Menu" :key="item.action" @click="active = item.action"
+                    :class="{ 'nav-item-active': active == item.action }">
+                    <img :src="item.icon" alt="">
+                    <span>{{ item.name }}</span>
+                </div>
+            </nav>
+
+            <div class="status">
+                <span class="dot" :class="deivce.online.status ? 'dot-ok' : 'dot-off'"></span>
+                <span>{{ deivce.online.message }}</span>
+            </div>
+        </aside>
+
+        <section class="main">
+            <header class="topbar">
+                <span class="tip">免责声明：本作品为开源项目，请勿用于商业用途</span>
+                <div class="win-btns">
+                    <button class="win-btn" @click="minSize">
+                        <el-icon>
                             <Minus />
                         </el-icon>
-                    </div>
-                    <div class="close" @click="closeWindow">
-                        <el-icon style="font-size: 25px;">
+                    </button>
+                    <button class="win-btn win-btn-close" @click="closeWindow">
+                        <el-icon>
                             <Close />
                         </el-icon>
-                    </div>
+                    </button>
                 </div>
+            </header>
 
-
+            <div class="page">
+                <Connect v-if="active == 'connect'"></Connect>
+                <DeviceList v-else-if="active == 'device_list'"></DeviceList>
+                <Settings v-else-if="active == 'settings'"></Settings>
             </div>
-            <Connect v-if="active == 'connect'"></Connect>
-            <DeviceList v-else-if="active == 'device_list'"></DeviceList>
-            <Settings v-else-if="active == 'settings'"></Settings>
-        </div>
+        </section>
     </div>
 </template>
 
@@ -76,173 +76,178 @@ let Menu = ref([
 ])
 const deivce = useDeviceStore();
 const active = ref("connect")
-const remote = window.require("electron").remote;
-const win = remote.getCurrentWindow();
+import { minimizeWindow, closeWindow as closeMainWindow, restoreWindow, setWindowSize, centerWindow } from "@/utils/electron";
 //最小化
-const minSize = () => {
-    win.minimize()
-}
-const closeWindow = () => {
-    win.close()
-}
+const minSize = () => minimizeWindow()
+const closeWindow = () => closeMainWindow()
 onMounted(() => {
-    win.restore()
-    win.setSize(750, 510)
-    win.center()
+    restoreWindow()
+    setWindowSize(750, 510)
+    centerWindow()
 })
 </script>
 
 <style lang="scss" scoped>
-.content {
-    min-height: 100vh;
-    box-sizing: border-box;
+.app {
+    height: 100vh;
+    padding: 12px;
     display: flex;
-    position: relative;
+    gap: 12px;
+    background: var(--bg);
     -webkit-app-region: drag;
+}
 
-    .main-left {
-        flex-basis: 200px;
+.sidebar {
+    width: 196px;
+    flex-shrink: 0;
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    -webkit-app-region: no-drag;
 
-        background: #F0F3F8;
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 6px 16px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 14px;
+
+        img {
+            width: 32px;
+        }
+
+        .name {
+            font-size: 14px;
+            font-weight: 600;
+        }
 
         .version {
-            margin: 10px;
-            font-size: 12px;
-            letter-spacing: 1px;
-            color: #6F788D;
-            margin-bottom: 60px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
         }
+    }
 
-        .operation-list {
-            -webkit-app-region: no-drag;
-            margin-left: 10px;
+    .nav {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
 
-            .operation-item {
-                display: flex;
-                align-items: center;
-                cursor: pointer;
-                box-sizing: border-box;
-                width: 95%;
-                margin: 20px 0;
-                padding: 15px;
-                box-shadow: 0px 0px 12px rgba(0, 0, 0, .12);
-                border-radius: 10px;
-                gap: 20px;
-
-                .desc {
-                    font-size: 14px;
-                }
-
-                img {
-                    width: 20px;
-                }
-            }
-
-            .operation-item-active {
-                background: #CCDFF8;
-                color: 0070F9
-            }
-
-
-
-        }
-
-        .logo {
-            position: absolute;
-            bottom: 80px;
-            -webkit-app-region: no-drag;
+        .nav-item {
             display: flex;
             align-items: center;
-            font-size: 17px;
-            margin-left: 10px;
-            font-weight: bold;
             gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: background .2s, color .2s;
 
             img {
-                width: 40px;
+                width: 16px;
+                opacity: .7;
+            }
+
+            &:hover {
+                background: #f2f5fa;
+                color: var(--text);
+            }
+
+            &-active {
+                background: #ecf5ff;
+                color: var(--primary);
+                font-weight: 600;
+
+                img {
+                    opacity: 1;
+                }
             }
         }
+    }
 
-        .online {
-            position: absolute;
-            bottom: 10px;
-            left: 20px;
+    .status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 6px 2px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--text-secondary);
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+
+            &-ok {
+                background: var(--success);
+            }
+
+            &-off {
+                background: var(--danger);
+            }
+        }
+    }
+}
+
+.main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    -webkit-app-region: no-drag;
+
+    .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 4px 2px 8px;
+        -webkit-app-region: drag;
+
+        .tip {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .win-btns {
+            display: flex;
+            gap: 6px;
             -webkit-app-region: no-drag;
-            display: flex;
-            align-items: center;
-            font-size: 13px;
-            gap: 20px;
-            color: #999999;
 
-            .status {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-            }
-
-            .success {
-                background: #67C23A;
-            }
-
-            .error {
-                background: #F56C6C;
-            }
-        }
-
-    }
-
-    .main-right {
-
-        flex: auto;
-        // background: #2ed573;
-        box-sizing: border-box;
-
-        .header {
-            justify-content: space-between;
-            display: flex;
-            margin-top: 10px;
-
-            .tip {
-                color: #E6A23C;
-                font-size: 14px;
-                margin-left: 5vw;
-            }
-
-            .btns {
+            .win-btn {
+                width: 28px;
+                height: 28px;
                 display: flex;
-                -webkit-app-region: no-drag;
+                align-items: center;
+                justify-content: center;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                border-radius: var(--radius-sm);
+                color: var(--text-secondary);
+                transition: background .2s, color .2s;
 
-                .semi {
-                    cursor: pointer;
-                    margin-right: 10px;
-                    width: 30px;
-                    height: 30px;
-                    line-height: 30px;
-                    text-align: center;
-
-                    &:hover {
-                        background: #909399;
-                        border-radius: 5px;
-                    }
+                &:hover {
+                    background: #e8ecf2;
+                    color: var(--text);
                 }
 
-                .close {
-                    cursor: pointer;
-                    margin-right: 10px;
-                    width: 30px;
-                    height: 30px;
-                    line-height: 30px;
-                    text-align: center;
-
-                    &:hover {
-                        background: #F56C6C;
-                        border-radius: 5px;
-                    }
+                &-close:hover {
+                    background: #fef0f0;
+                    color: var(--danger);
                 }
             }
-
         }
     }
 
+    .page {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 2px;
+    }
 }
 </style>

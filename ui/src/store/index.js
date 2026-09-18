@@ -7,7 +7,6 @@ export const useDeviceStore = defineStore({
         device_id: "",
         identificationCode: "",
         verificationCode: "",
-        connectioned: [],
       },
       serverInfo: localStorage.getItem("serverInfo")
         ? JSON.parse(localStorage.getItem("serverInfo"))
@@ -20,5 +19,17 @@ export const useDeviceStore = defineStore({
         message: "服务器连接失败",
       },
     };
+  },
+  actions: {
+    resetDevice() {
+      this.deviceInfo = {
+        device_id: "",
+        identificationCode: "",
+        verificationCode: "",
+      };
+    },
+    setOnline(status, message) {
+      this.online = { status, message };
+    },
   },
 });

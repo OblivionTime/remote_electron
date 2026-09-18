@@ -1,1 +1,343 @@
-"use strict";const{app:r,BrowserWindow:u,Tray:g,Menu:f,nativeImage:E,globalShortcut:v,screen:C,ipcMain:s,dialog:R}=require("electron"),{startWatchClipboard:M,stopWatchClipboard:b}=require("./clipboard.js"),{join:h,dirname:I}=require("path"),{spawn:x}=require("child_process");let w;require("url");process.env.ELECTRON_DISABLE_SECURITY_WARNINGS="true";let e,n;const d=E.createFromPath(h(__dirname,"logo.png"));s.on("showFloating",()=>{t||S()});s.on("closeFloating",()=>{t&&(t.close(),t=null,e.show(),n.destroy(),n=null,p())});s.on("startWatchClipboard",(o,i)=>{b(),M(e,i)});s.on("stopWatchClipboard",()=>{b()});s.on("createSuspensionMenu",o=>{f.buildFromTemplate([{label:"隐藏",click:()=>{t.hide()}},{label:"退出远控",click:()=>{const a={type:"question",buttons:["取消","确定"],defaultId:1,title:"警告",message:"点击退出后,目标将无法在远控当前设备",detail:""};R.showMessageBox(null,a).then(c=>{c.response===1&&(t.close(),t=null,e.show(),n.destroy(),n=null,p(),e.webContents.send("video_disconnect","发送成功"))})}}]).popup({})});const m=()=>{if(e=new u({frame:!1,width:750,useContentSize:!0,icon:d,height:510,minWidth:750,minHeight:510,center:!0,useContenRtSize:!0,autoHideMenuBar:!0,webPreferences:{nodeIntegration:!0,enableRemoteModule:!0,contextIsolation:!1}}),p(),e.webContents.on("did-finish-load",()=>{e.webContents.send("connect","发送成功")}),process.env.VITE_DEV_SERVER_URL)e.loadURL(process.env.VITE_DEV_SERVER_URL+"#/index");else{e.setMenu(null);const o=r.getAppPath();process.chdir(o+"/../../"),w=x("remote.exe"),e.loadFile(h(__dirname,"../dist/index.html")),e.webContents.executeJavaScript("window.location.hash = '#/index';")}},p=()=>{n=new g(d);const o=f.buildFromTemplate([{label:"主界面",click:()=>e.show()},{label:"退出",click:()=>r.exit()}]);n.on("double-click",()=>{e.show()}),n.setToolTip("山与路远程控制"),n.setContextMenu(o),e.on("close",i=>{e.hide(),e.setSkipTaskbar(!0),i.preventDefault()})};let t=null;const S=()=>{e.hide(),n&&(n.destroy(),n=null),t=new u({frame:!1,width:80,alwaysOnTop:!0,useContentSize:!0,icon:d,height:300,maxWidth:80,maxHeight:300,resizable:!1,useContenRtSize:!0,autoHideMenuBar:!0,transparent:!0,type:"toolbar",webPreferences:{nodeIntegration:!0,enableRemoteModule:!0,contextIsolation:!1}});const{left:o,top:i}={left:C.getPrimaryDisplay().workAreaSize.width-160,top:80};t.setPosition(o,i),t.setMaximizable(!1),n=new g(d);const a=f.buildFromTemplate([{label:"显示",click:()=>t.show()},{label:"退出",click:()=>{const c={type:"question",buttons:["取消","确定"],defaultId:1,title:"警告",message:"点击退出后,目标将无法在远控当前设备",detail:""};R.showMessageBox(null,c).then(_=>{_.response===1&&(t.close(),t=null,e.show(),n.destroy(),n=null,p(),e.webContents.send("video_disconnect","发送成功"))})}}]);n.on("double-click",()=>{t.show()}),n.setToolTip("你当前正在被控制中..."),n.setContextMenu(a),process.env.VITE_DEV_SERVER_URL?t.loadURL(process.env.VITE_DEV_SERVER_URL+"#/controlledEnd"):(t.loadFile(h(__dirname,"../dist/index.html")),t.webContents.executeJavaScript("window.location.hash = '#/controlledEnd';"))};let l;s.on("closeFileDialog",()=>{l&&(l.close(),l=null)});s.on("createFileWindow",(o,i)=>{const{identificationCode:a,verificationCode:c}=i;T(a,c)});const T=(o,i)=>{if(l){e.webContents.send("errmsg","目前只支持远程一个目标进行传输文件");return}l=new u({width:850,useContentSize:!0,icon:d,height:610,minWidth:850,minHeight:610,center:!0,title:"文件传输",useContenRtSize:!0,autoHideMenuBar:!0,webPreferences:{nodeIntegration:!0,enableRemoteModule:!0,contextIsolation:!1}}),l.on("close",a=>{l&&(l=null)}),process.env.VITE_DEV_SERVER_URL?l.loadURL(process.env.VITE_DEV_SERVER_URL+`#/fileManage?device=${o}&code=${i}`):(l.loadFile(h(__dirname,"../dist/index.html")),l.webContents.executeJavaScript(`window.location.hash = '#/fileManage?device=${o}&code=${i}';`))};r.whenReady().then(()=>{m(),r.on("activate",()=>{u.getAllWindows().length===0&&m()})});r.on("window-all-closed",()=>{try{b(),w&&process.kill(w.pid)}catch{}process.platform!=="darwin"&&r.quit()});
+"use strict";
+const {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  nativeImage,
+  globalShortcut,
+  screen,
+  ipcMain,
+  dialog,
+  desktopCapturer
+} = require("electron");
+const { startWatchClipboard, stopWatchClipboard } = require("./clipboard.js");
+const { join, dirname } = require("path");
+const { spawn } = require("child_process");
+const fs = require("fs");
+let exampleProcess;
+const { format } = require("url");
+let MainWindow;
+let MainTray;
+let FloatingWin = null;
+let FileWindow;
+const icon = nativeImage.createFromPath(join(__dirname, "logo.png"));
+const CLOSE_ACTIONS = ["ask", "hide", "quit"];
+let closeAction = "ask";
+let isQuitting = false;
+const closeActionFile = () => join(app.getPath("userData"), "close-action.json");
+const loadCloseAction = () => {
+  try {
+    const saved = JSON.parse(fs.readFileSync(closeActionFile(), "utf8")).action;
+    closeAction = CLOSE_ACTIONS.includes(saved) ? saved : "ask";
+  } catch (error) {
+    closeAction = "ask";
+  }
+};
+const saveCloseAction = (action) => {
+  closeAction = CLOSE_ACTIONS.includes(action) ? action : "ask";
+  try {
+    fs.writeFileSync(closeActionFile(), JSON.stringify({ action: closeAction }));
+  } catch (error) {
+    console.error("保存关闭行为失败", error);
+  }
+};
+const hideMainWindow = () => {
+  if (!MainWindow) return;
+  MainWindow.hide();
+  MainWindow.setSkipTaskbar(true);
+};
+const showMainWindow = () => {
+  if (!MainWindow) return;
+  if (MainWindow.isMinimized()) MainWindow.restore();
+  MainWindow.show();
+  MainWindow.setSkipTaskbar(false);
+  MainWindow.focus();
+};
+const quitApp = () => {
+  isQuitting = true;
+  app.quit();
+};
+ipcMain.on("showFloating", () => {
+  if (!FloatingWin) {
+    createFloatingWindow();
+  }
+});
+ipcMain.on("closeFloating", () => {
+  if (FloatingWin) {
+    FloatingWin.close();
+    FloatingWin = null;
+  }
+  showMainWindow();
+});
+ipcMain.on("startWatchClipboard", (e, sender) => {
+  stopWatchClipboard();
+  startWatchClipboard(MainWindow, sender);
+});
+ipcMain.on("stopWatchClipboard", () => {
+  stopWatchClipboard();
+});
+ipcMain.on("createSuspensionMenu", (e) => {
+  const rightM = Menu.buildFromTemplate([
+    {
+      label: "隐藏",
+      click: () => {
+        FloatingWin.hide();
+      }
+    },
+    {
+      label: "退出远控",
+      click: () => {
+        const options = {
+          type: "question",
+          buttons: ["取消", "确定"],
+          defaultId: 1,
+          title: "警告",
+          message: "点击退出后,目标将无法在远控当前设备",
+          detail: ""
+        };
+        dialog.showMessageBox(null, options).then((response) => {
+          if (response.response === 1) {
+            FloatingWin.close();
+            FloatingWin = null;
+            showMainWindow();
+            if (MainWindow) {
+              MainWindow.webContents.send("video_disconnect", "发送成功");
+            }
+          }
+        });
+      }
+    }
+  ]);
+  rightM.popup({});
+});
+ipcMain.handle("get-screen-source", async () => {
+  const sources = await desktopCapturer.getSources({ types: ["screen"] });
+  return sources.length > 0 ? sources[0].id : null;
+});
+ipcMain.handle("get-close-action", () => closeAction);
+ipcMain.handle("set-close-action", (e, action) => {
+  saveCloseAction(action);
+  return closeAction;
+});
+const senderWindow = (e) => BrowserWindow.fromWebContents(e.sender);
+ipcMain.on("window-minimize", (e) => {
+  var _a;
+  (_a = senderWindow(e)) == null ? void 0 : _a.minimize();
+});
+ipcMain.on("window-close", (e) => {
+  var _a;
+  (_a = senderWindow(e)) == null ? void 0 : _a.close();
+});
+ipcMain.on("window-restore", (e) => {
+  var _a;
+  (_a = senderWindow(e)) == null ? void 0 : _a.restore();
+});
+ipcMain.on("window-set-size", (e, w, h) => {
+  var _a;
+  (_a = senderWindow(e)) == null ? void 0 : _a.setSize(w, h);
+});
+ipcMain.on("window-center", (e) => {
+  var _a;
+  (_a = senderWindow(e)) == null ? void 0 : _a.center();
+});
+ipcMain.on("window-set-position", (e, x, y) => {
+  var _a;
+  (_a = senderWindow(e)) == null ? void 0 : _a.setPosition(x, y);
+});
+const createWindow = () => {
+  MainWindow = new BrowserWindow({
+    frame: false,
+    width: 750,
+    useContentSize: true,
+    icon,
+    height: 510,
+    minWidth: 750,
+    minHeight: 510,
+    center: true,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      additionalArguments: ["--window-role=main"]
+    }
+  });
+  CreateMainTray();
+  MainWindow.on("close", async (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    if (closeAction === "quit") {
+      quitApp();
+      return;
+    }
+    if (closeAction === "hide") {
+      hideMainWindow();
+      return;
+    }
+    const { response, checkboxChecked } = await dialog.showMessageBox(MainWindow, {
+      type: "question",
+      buttons: ["隐藏到托盘", "退出程序", "取消"],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+      title: "关闭窗口",
+      message: "关闭窗口后要做什么？",
+      detail: "隐藏到托盘：程序继续在后台运行，仍可被远程控制\n退出程序：完全退出，不再响应远程控制",
+      checkboxLabel: "记住我的选择（可在「高级设置 - 窗口行为」中修改）",
+      checkboxChecked: true
+    });
+    if (response === 2) return;
+    const action = response === 1 ? "quit" : "hide";
+    if (checkboxChecked) saveCloseAction(action);
+    if (action === "quit") {
+      quitApp();
+    } else {
+      hideMainWindow();
+    }
+  });
+  MainWindow.webContents.on("did-finish-load", () => {
+    MainWindow.webContents.send("connect", "发送成功");
+  });
+  if (process.env.VITE_DEV_SERVER_URL) {
+    MainWindow.loadURL(process.env.VITE_DEV_SERVER_URL + "#/index");
+  } else {
+    MainWindow.setMenu(null);
+    const appPath = app.getAppPath();
+    process.chdir(appPath + "/../../");
+    exampleProcess = spawn("remote.exe");
+    MainWindow.loadFile(join(__dirname, "../dist/index.html"));
+    MainWindow.webContents.executeJavaScript(
+      `window.location.hash = '#/index';`
+    );
+  }
+};
+const CreateMainTray = () => {
+  if (MainTray) return;
+  MainTray = new Tray(icon);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: "主界面", click: () => showMainWindow() },
+    { label: "退出", click: () => quitApp() }
+  ]);
+  MainTray.on("double-click", () => {
+    showMainWindow();
+  });
+  MainTray.setToolTip("山与路远程控制");
+  MainTray.setContextMenu(contextMenu);
+};
+const createFloatingWindow = () => {
+  hideMainWindow();
+  FloatingWin = new BrowserWindow({
+    frame: false,
+    width: 80,
+    alwaysOnTop: true,
+    useContentSize: true,
+    icon,
+    height: 300,
+    maxWidth: 80,
+    maxHeight: 300,
+    resizable: false,
+    autoHideMenuBar: true,
+    transparent: true,
+    // 设置为透明
+    type: "toolbar",
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      additionalArguments: ["--window-role=float"]
+    }
+  });
+  const { left, top } = {
+    left: screen.getPrimaryDisplay().workAreaSize.width - 160,
+    top: 80
+  };
+  FloatingWin.setPosition(left, top);
+  FloatingWin.setMaximizable(false);
+  if (process.env.VITE_DEV_SERVER_URL) {
+    FloatingWin.loadURL(process.env.VITE_DEV_SERVER_URL + "#/controlledEnd");
+  } else {
+    FloatingWin.loadFile(join(__dirname, "../dist/index.html"));
+    FloatingWin.webContents.executeJavaScript(
+      `window.location.hash = '#/controlledEnd';`
+    );
+  }
+};
+ipcMain.on("closeFileDialog", () => {
+  if (FileWindow) {
+    FileWindow.close();
+    FileWindow = null;
+  }
+});
+ipcMain.on("createFileWindow", (e, item) => {
+  const { identificationCode, verificationCode } = item;
+  createFileWindow(identificationCode, verificationCode);
+});
+const createFileWindow = (device, code) => {
+  if (FileWindow) {
+    if (FileWindow.isMinimized()) FileWindow.restore();
+    FileWindow.show();
+    FileWindow.focus();
+    return;
+  }
+  FileWindow = new BrowserWindow({
+    width: 1100,
+    useContentSize: true,
+    icon,
+    height: 760,
+    minWidth: 940,
+    minHeight: 620,
+    center: true,
+    title: "文件传输",
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      additionalArguments: ["--window-role=file"]
+    }
+  });
+  FileWindow.on("close", (event) => {
+    if (FileWindow) {
+      FileWindow = null;
+    }
+  });
+  if (process.env.VITE_DEV_SERVER_URL) {
+    FileWindow.loadURL(
+      process.env.VITE_DEV_SERVER_URL + `#/fileManage?device=${device}&code=${code}`
+    );
+  } else {
+    FileWindow.loadFile(join(__dirname, "../dist/index.html"));
+    FileWindow.webContents.executeJavaScript(
+      `window.location.hash = '#/fileManage?device=${device}&code=${code}';`
+    );
+  }
+};
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (FloatingWin) {
+      FloatingWin.show();
+      return;
+    }
+    showMainWindow();
+  });
+  app.on("before-quit", () => {
+    isQuitting = true;
+  });
+  app.whenReady().then(() => {
+    loadCloseAction();
+    createWindow();
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+  app.on("window-all-closed", () => {
+    try {
+      stopWatchClipboard();
+      if (exampleProcess) {
+        process.kill(exampleProcess.pid);
+      }
+    } catch (error) {
+    }
+    if (process.platform !== "darwin") app.quit();
+  });
+}
